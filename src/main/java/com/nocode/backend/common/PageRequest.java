@@ -7,7 +7,6 @@ import lombok.Data;
  */
 @Data
 public class PageRequest {
-
     /**
      * 当前页号
      */

@@ -1,6 +1,13 @@
 spring:
   application:
     name: nocode-backend
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ai_nocode
+    username: root
+    password: 647252
+
 server:
   port: 8080
   servlet:
