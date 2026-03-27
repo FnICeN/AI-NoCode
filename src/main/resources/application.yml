@@ -7,11 +7,14 @@ spring:
     url: jdbc:mysql://localhost:3306/ai_nocode
     username: root
     password: 647252
+  profiles:
+    active: local
 
 server:
   port: 8080
   servlet:
     context-path: /api
+
 
 # springdoc-openapi项目配置
 springdoc:
@@ -24,3 +27,22 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# AI
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com
+      api-key: sk-xxx
+      model-name: deepseek-chat
+      log-requests: true
+      log-responses: true
+      max-tokens: 8192
+      strict-json-schema: true
+      response-format: json_object
+
+# Log
+logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
