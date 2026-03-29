@@ -17,13 +17,13 @@ class AICodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCode() {
-        File file = facade.generateAndSaveCode("请帮我生成一个简单的登录页面，不多于30行", CodeGenTypeEnum.MULTI_FILE);
+        File file = facade.generateAndSaveCode("请帮我生成一个简单的登录页面，不多于30行", CodeGenTypeEnum.MULTI_FILE, 1L);
         Assertions.assertNotNull(file);
     }
 
     @Test
     void generateAndSaveCodeStream() {
-        Flux<String> codeStream = facade.generateAndSaveCodeStream("请帮我生成一个简单的登录页面，不多于30行", CodeGenTypeEnum.HTML);
+        Flux<String> codeStream = facade.generateAndSaveCodeStream("请帮我生成一个简单的登录页面，不多于30行", CodeGenTypeEnum.HTML, 1L);
         // 等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         Assertions.assertNotNull(result);

@@ -7,8 +7,10 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.nocode.backend.constant.AppConstant;
+import com.nocode.backend.core.AICodeGeneratorFacade;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
+import com.nocode.backend.exception.ThrowUtils;
 import com.nocode.backend.mapper.AppMapper;
 import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
@@ -19,8 +21,8 @@ import com.nocode.backend.model.vo.UserVO;
 import com.nocode.backend.service.AppService;
 import com.nocode.backend.service.UserService;
 import jakarta.annotation.Resource;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,9 +41,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private UserService userService;
+    @Resource
+    AICodeGeneratorFacade aiCodeGeneratorFacade;
 
     @Override
-    public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
+    public long addApp(AppAddRequest appAddRequest, User loginUser) {
         // 参数校验
         if (appAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -51,9 +55,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (StrUtil.hasBlank(appName, initPrompt)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用名称或初始化提示词为空");
         }
-
-        // 获取登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 创建应用
         App app = new App();
@@ -72,13 +73,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public boolean deleteApp(Long id, HttpServletRequest request) {
+    public boolean deleteApp(Long id, User loginUser) {
         if (id == null || id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用id不合法");
         }
-
-        // 获取登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 查询应用
         App app = this.getById(id);
@@ -95,7 +93,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public boolean updateApp(AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
+    public boolean updateApp(AppUpdateRequest appUpdateRequest, User loginUser) {
         if (appUpdateRequest == null || appUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
@@ -108,9 +106,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (appName.length() > 100) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用名称过长");
         }
-
-        // 获取登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 查询应用
         App oldApp = this.getById(id);
@@ -146,13 +141,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     // 只查询自己的，所以传入的appQueryRequest中可以没有userId（实际上也没定义）
     @Override
-    public Page<AppVO> listMyApps(AppQueryRequest appQueryRequest, HttpServletRequest request) {
+    public Page<AppVO> listMyApps(AppQueryRequest appQueryRequest, User loginUser) {
         if (appQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
-
-        // 获取登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 分页参数
         int pageNum = appQueryRequest.getPageNum();
@@ -373,6 +365,29 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         
         return queryWrapper;
+    }
+
+    /**
+     *
+     * @param appId 应用ID
+     * @param message 提示词
+     * @param loginUser 当前用户对象
+     * @return
+     */
+    @Override
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "提示词不能为空");
+
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
+
+        String codeGenType = app.getCodeGenType();
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "生成类型错误");
+
+        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
     }
 
 }

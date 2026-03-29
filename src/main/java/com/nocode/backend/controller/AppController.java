@@ -1,5 +1,7 @@
 package com.nocode.backend.controller;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.nocode.backend.annotation.AuthCheck;
 import com.nocode.backend.common.BaseResponse;
@@ -10,11 +12,19 @@ import com.nocode.backend.exception.ErrorCode;
 import com.nocode.backend.exception.ThrowUtils;
 import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
+import com.nocode.backend.model.entity.User;
 import com.nocode.backend.model.vo.AppVO;
 import com.nocode.backend.service.AppService;
+import com.nocode.backend.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 /**
  * 应用 控制层。
@@ -27,8 +37,42 @@ public class AppController {
 
     @Resource
     private AppService appService;
+    @Resource
+    private UserService userService;
 
     // ==================== 用户接口 ====================
+
+    /**
+     * 流式返回代码生成
+     *
+     * @param appId 应用ID
+     * @param message 用户提示词
+     * @param request 请求对象
+     * @return
+     */
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "提示词不能为空");
+        User loginUser = userService.getLoginUser(request);
+        Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
+        // 返回前做一层包装，避免空格数据被前端忽略
+        return contentFlux
+                .map(chunk -> {
+                    Map<String ,String> wrapper = Map.of("d", chunk);
+                    String jsonStr = JSONUtil.toJsonStr(wrapper);
+                    return ServerSentEvent.<String>builder()
+                            .data(jsonStr)
+                            .build();
+                })
+                // 标识是否已结束，否则前端无法区分是异常中断还是正常结束
+                .concatWith(Mono.just(
+                        ServerSentEvent.<String>builder()
+                                .event("done")
+                                .data("")
+                                .build()
+                ));
+    }
 
     /**
      * 创建应用
@@ -40,7 +84,7 @@ public class AppController {
     @PostMapping("/add")
     public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
-        long result = appService.addApp(appAddRequest, request);
+        long result = appService.addApp(appAddRequest, userService.getLoginUser(request));
         return ResultUtils.success(result);
     }
 
@@ -54,7 +98,7 @@ public class AppController {
     @PostMapping("/update")
     public BaseResponse<Boolean> updateApp(@RequestBody AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appUpdateRequest == null || appUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
-        boolean result = appService.updateApp(appUpdateRequest, request);
+        boolean result = appService.updateApp(appUpdateRequest, userService.getLoginUser(request));
         return ResultUtils.success(result);
     }
 
@@ -68,7 +112,7 @@ public class AppController {
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
-        boolean result = appService.deleteApp(deleteRequest.getId(), request);
+        boolean result = appService.deleteApp(deleteRequest.getId(), userService.getLoginUser(request));
         return ResultUtils.success(result);
     }
 
@@ -109,7 +153,7 @@ public class AppController {
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        Page<AppVO> result = appService.listMyApps(appQueryRequest, request);
+        Page<AppVO> result = appService.listMyApps(appQueryRequest, userService.getLoginUser(request));
         return ResultUtils.success(result);
     }
 

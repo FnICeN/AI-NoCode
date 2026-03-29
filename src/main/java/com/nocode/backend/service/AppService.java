@@ -5,8 +5,10 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
+import com.nocode.backend.model.entity.User;
 import com.nocode.backend.model.vo.AppVO;
 import jakarta.servlet.http.HttpServletRequest;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -21,28 +23,28 @@ public interface AppService extends IService<App> {
      * 创建应用
      *
      * @param appAddRequest 创建请求
-     * @param request       请求对象
+     * @param loginUser     当前用户对象
      * @return 新应用id
      */
-    long addApp(AppAddRequest appAddRequest, HttpServletRequest request);
+    long addApp(AppAddRequest appAddRequest, User loginUser);
 
     /**
      * 删除应用（用户只能删除自己的应用）
      *
      * @param id      应用id
-     * @param request 请求对象
+     * @param loginUser 当前用户对象
      * @return 是否成功
      */
-    boolean deleteApp(Long id, HttpServletRequest request);
+    boolean deleteApp(Long id, User loginUser);
 
     /**
      * 更新应用（用户只能更新自己的应用）
      *
      * @param appUpdateRequest 更新请求
-     * @param request          请求对象
+     * @param loginUser 当前用户对象
      * @return 是否成功
      */
-    boolean updateApp(AppUpdateRequest appUpdateRequest, HttpServletRequest request);
+    boolean updateApp(AppUpdateRequest appUpdateRequest, User loginUser);
 
     /**
      * 根据id获取应用详情
@@ -56,10 +58,10 @@ public interface AppService extends IService<App> {
      * 分页查询自己的应用列表
      *
      * @param appQueryRequest 查询请求
-     * @param request         请求对象
+     * @param loginUser 当前用户对象
      * @return 分页对象
      */
-    Page<AppVO> listMyApps(AppQueryRequest appQueryRequest, HttpServletRequest request);
+    Page<AppVO> listMyApps(AppQueryRequest appQueryRequest, User loginUser);
 
     /**
      * 分页查询精选应用列表
@@ -125,5 +127,15 @@ public interface AppService extends IService<App> {
      * @return QueryWrapper对象
      */
     QueryWrapper getAdminQueryWrapper(AppAdminQueryRequest appAdminQueryRequest);
+
+    /**
+     * 通过对话生成应用代码
+     *
+     * @param appId 应用ID
+     * @param message 提示词
+     * @param loginUser 当前用户对象
+     * @return
+     */
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
 }
