@@ -1,18 +1,20 @@
 package com.nocode.backend.controller;
 
 import com.mybatisflex.core.paginate.Page;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.nocode.backend.annotation.AuthCheck;
+import com.nocode.backend.common.BaseResponse;
+import com.nocode.backend.common.DeleteRequest;
+import com.nocode.backend.common.ResultUtils;
+import com.nocode.backend.constant.UserConstant;
+import com.nocode.backend.exception.ErrorCode;
+import com.nocode.backend.exception.ThrowUtils;
+import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
+import com.nocode.backend.model.vo.AppVO;
 import com.nocode.backend.service.AppService;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 应用 控制层。
@@ -23,72 +25,163 @@ import java.util.List;
 @RequestMapping("/app")
 public class AppController {
 
-    @Autowired
+    @Resource
     private AppService appService;
 
+    // ==================== 用户接口 ====================
+
     /**
-     * 保存应用。
+     * 创建应用
      *
-     * @param app 应用
-     * @return {@code true} 保存成功，{@code false} 保存失败
+     * @param appAddRequest 创建请求
+     * @param request       请求对象
+     * @return 新应用id
      */
-    @PostMapping("save")
-    public boolean save(@RequestBody App app) {
-        return appService.save(app);
+    @PostMapping("/add")
+    public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
+        long result = appService.addApp(appAddRequest, request);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 根据主键删除应用。
+     * 根据id修改自己的应用
      *
-     * @param id 主键
-     * @return {@code true} 删除成功，{@code false} 删除失败
+     * @param appUpdateRequest 更新请求
+     * @param request          请求对象
+     * @return 是否成功
      */
-    @DeleteMapping("remove/{id}")
-    public boolean remove(@PathVariable Long id) {
-        return appService.removeById(id);
+    @PostMapping("/update")
+    public BaseResponse<Boolean> updateApp(@RequestBody AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appUpdateRequest == null || appUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
+        boolean result = appService.updateApp(appUpdateRequest, request);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 根据主键更新应用。
+     * 根据id删除自己的应用
      *
-     * @param app 应用
-     * @return {@code true} 更新成功，{@code false} 更新失败
+     * @param deleteRequest 删除请求
+     * @param request       请求对象
+     * @return 是否成功
      */
-    @PutMapping("update")
-    public boolean update(@RequestBody App app) {
-        return appService.updateById(app);
+    @PostMapping("/delete")
+    public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
+        boolean result = appService.deleteApp(deleteRequest.getId(), request);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 查询所有应用。
+     * 根据id查看应用详情
      *
-     * @return 所有数据
-     */
-    @GetMapping("list")
-    public List<App> list() {
-        return appService.list();
-    }
-
-    /**
-     * 根据主键获取应用。
-     *
-     * @param id 应用主键
+     * @param id 应用id
      * @return 应用详情
      */
-    @GetMapping("getInfo/{id}")
-    public App getInfo(@PathVariable Long id) {
-        return appService.getById(id);
+    @GetMapping("/get")
+    public BaseResponse<App> getAppById(@RequestParam Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        App app = appService.getAppById(id);
+        return ResultUtils.success(app);
     }
 
     /**
-     * 分页查询应用。
+     * 根据id查看应用详情（脱敏）
      *
-     * @param page 分页对象
+     * @param id 应用id
+     * @return 应用详情VO
+     */
+    @GetMapping("/get/vo")
+    public BaseResponse<AppVO> getAppVOById(@RequestParam Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        App app = appService.getAppById(id);
+        AppVO appVO = appService.getAppVO(app);
+        return ResultUtils.success(appVO);
+    }
+
+    /**
+     * 分页查询自己的应用列表（脱敏）
+     *
+     * @param appQueryRequest 查询请求
+     * @param request         请求对象
      * @return 分页对象
      */
-    @GetMapping("page")
-    public Page<App> page(Page<App> page) {
-        return appService.page(page);
+    @PostMapping("/my/list/page/vo")
+    public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        Page<AppVO> result = appService.listMyApps(appQueryRequest, request);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 分页查询精选的应用列表（脱敏）
+     *
+     * @param appQueryRequest 查询请求
+     * @return 分页对象
+     */
+    @PostMapping("/good/list/page/vo")
+    public BaseResponse<Page<AppVO>> listFeaturedApps(@RequestBody AppQueryRequest appQueryRequest) {
+        ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        Page<AppVO> result = appService.listFeaturedApps(appQueryRequest);
+        return ResultUtils.success(result);
+    }
+
+    // ==================== 管理员接口 ====================
+
+    /**
+     * 根据id删除任意应用
+     *
+     * @param deleteRequest 删除请求
+     * @return 是否成功
+     */
+    @PostMapping("/admin/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> deleteAppByAdmin(@RequestBody DeleteRequest deleteRequest) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
+        boolean result = appService.deleteAppByAdmin(deleteRequest.getId());
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 根据id更新任意应用
+     *
+     * @param appAdminUpdateRequest 更新请求
+     * @return 是否成功
+     */
+    @PostMapping("/admin/update")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> updateAppByAdmin(@RequestBody AppAdminUpdateRequest appAdminUpdateRequest) {
+        ThrowUtils.throwIf(appAdminUpdateRequest == null || appAdminUpdateRequest.getId() == null, ErrorCode.PARAMS_ERROR);
+        boolean result = appService.updateAppByAdmin(appAdminUpdateRequest);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 管理员分页查询应用列表（脱敏）
+     *
+     * @param appAdminQueryRequest 查询请求
+     * @return 分页对象
+     */
+    @PostMapping("/admin/list/page/vo")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<AppVO>> listAppVOsByPageByAdmin(@RequestBody AppAdminQueryRequest appAdminQueryRequest) {
+        ThrowUtils.throwIf(appAdminQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        Page<AppVO> result = appService.listAppsByAdmin(appAdminQueryRequest);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 管理员根据id查看应用详情（脱敏）
+     *
+     * @param id 应用id
+     * @return 应用详情
+     */
+    @GetMapping("/admin/get/vo")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<AppVO> getAppVOByIdByAdmin(@RequestParam Long id) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        App app = appService.getAppById(id);
+        return ResultUtils.success(appService.getAppVO(app));
     }
 
 }
