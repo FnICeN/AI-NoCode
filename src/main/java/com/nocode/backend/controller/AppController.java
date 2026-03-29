@@ -74,6 +74,16 @@ public class AppController {
                 ));
     }
 
+    @PostMapping("/app/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appDeployRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Long appId = appDeployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        String deployURL = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deployURL);
+    }
+
     /**
      * 创建应用
      *

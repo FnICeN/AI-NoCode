@@ -138,4 +138,12 @@ public interface AppService extends IService<App> {
      */
     Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
+    /**
+     * 应用部署
+     *
+     * @param appId 应用ID
+     * @param loginUser 当前用户
+     * @return 部署访问路径（给Nginx用）
+     */
+    String deployApp(Long appId, User loginUser);
 }
