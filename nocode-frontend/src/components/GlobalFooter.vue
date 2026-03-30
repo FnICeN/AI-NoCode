@@ -16,8 +16,6 @@
 .footer {
   background: #efefef;
   text-align: center;
-  padding: 20px;
-  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;

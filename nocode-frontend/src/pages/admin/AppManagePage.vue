@@ -78,7 +78,7 @@ const handleTableChange = (pagination: any) => {
 
 const handleDelete = async (id: string) => {
   try {
-    const res = await deleteAppByAdmin({ id: String(id) })
+    const res = await deleteAppByAdmin({ id: id })
     if (res.data.code === 0 && res.data.data) {
       message.success('删除成功')
       fetchData()
@@ -98,7 +98,7 @@ const handleFeature = async (id: string, priority: number) => {
   try {
     if (priority !== 99) {
       const res = await updateAppByAdmin({
-        id: String(id),
+        id: id,
         priority: 99,
       })
       if (res.data.code === 0 && res.data.data) {
@@ -109,7 +109,7 @@ const handleFeature = async (id: string, priority: number) => {
       }
     } else {
       const res = await updateAppByAdmin({
-        id: String(id),
+        id: id,
         priority: 0,
       })
       if (res.data.code === 0 && res.data.data) {

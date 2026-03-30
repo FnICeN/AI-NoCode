@@ -68,7 +68,7 @@ const handleSave = async () => {
     if (loginUser && loginUser.userRole === 'admin') {
       // 管理员可以修改更多字段
       res = await updateAppByAdmin({
-        id: String(appId),
+        id: appId,
         appName: formData.appName,
         cover: formData.cover,
         priority: formData.priority,

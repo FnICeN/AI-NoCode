@@ -1,6 +1,6 @@
 declare namespace API {
   type App = {
-    id?: string
+    id?: number
     appName?: string
     cover?: string
     initPrompt?: string
@@ -8,7 +8,7 @@ declare namespace API {
     deployKey?: string
     deployedTime?: string
     priority?: number
-    userId?: string
+    userId?: number
     editTime?: string
     createTime?: string
     updateTime?: string
@@ -34,14 +34,14 @@ declare namespace API {
   }
 
   type AppAdminUpdateRequest = {
-    id?: string
+    id?: number
     appName?: string
     cover?: string
     priority?: number
   }
 
   type AppDeployRequest = {
-    appId?: string
+    appId?: number
   }
 
   type AppQueryRequest = {
@@ -135,27 +135,27 @@ declare namespace API {
   }
 
   type DeleteRequest = {
-    id?: string
+    id?: number
   }
 
   type getAppByIdParams = {
-    id: string
+    id: number
   }
 
   type getAppVOByIdByAdminParams = {
-    id: string
+    id: number
   }
 
   type getAppVOByIdParams = {
-    id: string
+    id: number
   }
 
   type getUserByIdParams = {
-    id: string
+    id: number
   }
 
   type getUserVOByIdParams = {
-    id: string
+    id: number
   }
 
   type LoginUserVO = {
