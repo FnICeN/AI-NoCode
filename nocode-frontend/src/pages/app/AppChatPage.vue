@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, reactive } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAppById, deployApp } from '@/api/appController'
+import {
+  ArrowLeftOutlined,
+  InfoCircleOutlined,
+  CloudUploadOutlined,
+  UserOutlined,
+  RobotOutlined,
+  PaperClipOutlined,
+  EditOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,7 +63,7 @@ const fetchAppDetail = async () => {
       constructPageInfo(res.data.data)
       // 只有当是新建项目（没有 codeGenType）且有初始提示词时才自动发送消息
       if (gen === '1') {
-        await sendInitialMessage(app.value.initPrompt)
+        await sendInitialMessage(String(app.value.initPrompt))
       }
     } else {
       message.error(res.data.msg || '获取应用信息失败')
@@ -70,9 +80,9 @@ const fetchAppDetail = async () => {
 const constructPageInfo = (data: API.App) => {
   // 添加对话
   const userMessage: Message = {
-    id: data.id,
+    id: String(data.id),
     role: 'user',
-    content: data.initPrompt,
+    content: String(data.initPrompt),
   }
   messages.value.push(userMessage)
   // 展示预览
@@ -95,7 +105,7 @@ const startChat = async (messageText: string) => {
   previewUrl.value = ''
 
   // 添加AI消息占位
-  const aiMessage = ref<Message> ({
+  const aiMessage = ref<Message>({
     id: (Date.now() + 1).toString(),
     role: 'assistant',
     content: '',
@@ -231,6 +241,10 @@ const handleDeploy = async () => {
   }
 }
 
+const handleEdit = (id: string) => {
+  router.push(`/app/edit/${id}`)
+}
+
 // 复制部署链接
 const copyDeployUrl = () => {
   navigator.clipboard.writeText(deployUrl.value)
@@ -270,6 +284,10 @@ watch(messages, scrollToBottom, { deep: true })
         </a-tag>
       </div>
       <div class="header-right">
+        <a-button @click="handleEdit(app?.id || '')">
+          <template #icon><info-circle-outlined /></template>
+          应用详情
+        </a-button>
         <a-button type="primary" :loading="deploying" @click="handleDeploy">
           <template #icon><cloud-upload-outlined /></template>
           部署
@@ -355,7 +373,7 @@ watch(messages, scrollToBottom, { deep: true })
         <div v-else class="preview-container">
           <div class="preview-header">
             <span class="preview-title">生成后的网页展示</span>
-            <a-button type="link" size="small" @click="showPreview = false"> 隐藏 </a-button>
+            <a-button type="link" @click="showPreview = false"> 隐藏 </a-button>
           </div>
           <iframe
             :src="previewUrl"

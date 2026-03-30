@@ -73,6 +73,11 @@ const originItems = [
     title: '用户管理',
   },
   {
+    key: '/admin/appManage',
+    label: '应用管理',
+    title: '应用管理'
+  },
+  {
     key: 'others',
     label: h('a', { href: 'https://blog.fnicen.top', target: '_blank' }, '个人主页'),
     title: '个人主页',

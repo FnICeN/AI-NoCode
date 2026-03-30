@@ -2,12 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import {
-  addApp,
-  listMyAppVoByPage,
-  listFeaturedApps,
-} from '@/api/appController'
+import { addApp, listMyAppVoByPage, listFeaturedApps } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
+import { PaperClipOutlined, ThunderboltOutlined, ArrowUpOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
@@ -16,48 +13,22 @@ const loginUserStore = useLoginUserStore()
 const prompt = ref('')
 const creating = ref(false)
 
-// 应用类型定义
-interface AppVO {
-  id?: number
-  appName?: string
-  cover?: string
-  codeGenType?: string
-  priority?: number
-  userId?: number
-  createTime?: string
-  updateTime?: string
-  user?: {
-    id?: number
-    userAccount?: string
-    userName?: string
-    userAvatar?: string
-    userProfile?: string
-    userRole?: string
-    createTime?: string
-  }
-}
-
 // 我的应用列表
-const myApps = ref<AppVO[]>([])
+const myApps = ref<API.AppVO[]>([])
 const myAppsLoading = ref(false)
 const myAppsTotal = ref(0)
 const myAppsPage = ref(1)
 const myAppsPageSize = ref(6)
 
 // 精选应用列表
-const featuredApps = ref<AppVO[]>([])
+const featuredApps = ref<API.AppVO[]>([])
 const featuredAppsLoading = ref(false)
 const featuredAppsTotal = ref(0)
 const featuredAppsPage = ref(1)
 const featuredAppsPageSize = ref(6)
 
 // 快捷提示词标签
-const quickPrompts = [
-  '波普风电商页面',
-  '企业网站',
-  '电商运营后台',
-  '暗黑话题社区',
-]
+const quickPrompts = ['波普风电商页面', '企业网站', '电商运营后台', '暗黑话题社区']
 
 // 创建应用
 const handleCreateApp = async () => {
@@ -216,7 +187,7 @@ onMounted(() => {
             :loading="creating"
             @click="handleCreateApp"
           >
-            <arrow-up-outlined />
+            <template #icon><arrow-up-outlined /></template>
           </a-button>
         </div>
       </div>
@@ -238,27 +209,16 @@ onMounted(() => {
     <div v-if="loginUserStore.loginUser.id" class="section">
       <h2 class="section-title">我的作品</h2>
       <a-spin :spinning="myAppsLoading">
-        <a-empty v-if="myApps.length === 0 && !myAppsLoading" description="暂无应用，快去创建一个吧" />
+        <a-empty
+          v-if="myApps.length === 0 && !myAppsLoading"
+          description="暂无应用，快去创建一个吧"
+        />
         <a-row v-else :gutter="[24, 24]">
-          <a-col
-            v-for="app in myApps"
-            :key="app.id"
-            :xs="24"
-            :sm="12"
-            :md="8"
-          >
-            <a-card
-              class="app-card"
-              hoverable
-              @click="goToAppChat(app.id!)"
-            >
+          <a-col v-for="app in myApps" :key="app.id" :xs="24" :sm="12" :md="8">
+            <a-card class="app-card" hoverable @click="goToAppChat(app.id!)">
               <template #cover>
                 <div class="app-cover">
-                  <img
-                    v-if="app.cover"
-                    :src="app.cover"
-                    :alt="app.appName"
-                  />
+                  <img v-if="app.cover" :src="app.cover" :alt="app.appName" />
                   <div v-else class="cover-placeholder">
                     <appstore-outlined />
                   </div>
@@ -290,27 +250,16 @@ onMounted(() => {
     <div class="section">
       <h2 class="section-title">精选案例</h2>
       <a-spin :spinning="featuredAppsLoading">
-        <a-empty v-if="featuredApps.length === 0 && !featuredAppsLoading" description="暂无精选应用" />
+        <a-empty
+          v-if="featuredApps.length === 0 && !featuredAppsLoading"
+          description="暂无精选应用"
+        />
         <a-row v-else :gutter="[24, 24]">
-          <a-col
-            v-for="app in featuredApps"
-            :key="app.id"
-            :xs="24"
-            :sm="12"
-            :md="8"
-          >
-            <a-card
-              class="app-card featured-card"
-              hoverable
-              @click="goToAppChat(app.id!)"
-            >
+          <a-col v-for="app in featuredApps" :key="app.id" :xs="24" :sm="12" :md="8">
+            <a-card class="app-card featured-card" hoverable @click="goToAppChat(app.id!)">
               <template #cover>
                 <div class="app-cover">
-                  <img
-                    v-if="app.cover"
-                    :src="app.cover"
-                    :alt="app.appName"
-                  />
+                  <img v-if="app.cover" :src="app.cover" :alt="app.appName" />
                   <div v-else class="cover-placeholder">
                     <appstore-outlined />
                   </div>
@@ -319,11 +268,7 @@ onMounted(() => {
               <a-card-meta>
                 <template #title>
                   <div class="featured-title">
-                    <a-avatar
-                      v-if="app.user?.userAvatar"
-                      :src="app.user.userAvatar"
-                      size="small"
-                    />
+                    <a-avatar v-if="app.user?.userAvatar" :src="app.user.userAvatar" size="small" />
                     <a-avatar v-else size="small">
                       {{ app.user?.userName?.charAt(0) || 'U' }}
                     </a-avatar>
@@ -458,6 +403,8 @@ onMounted(() => {
 
 .section {
   margin-bottom: 48px;
+  margin-left: 20px;
+  margin-right: 20px;
 }
 
 .section-title {

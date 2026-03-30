@@ -25,9 +25,20 @@ const router = createRouter({
       component: () => import('../pages/admin/UserManagePage.vue'),
     },
     {
+      path: '/admin/appManage',
+      name: '应用管理',
+      component: () => import('../pages/admin/AppManagePage.vue'),
+    },
+    {
       path: '/app/chat/:appId',
       name: '应用对话',
       component: () => import('../pages/app/AppChatPage.vue'),
+      props: true,
+    },
+    {
+      path: '/app/edit/:appId',
+      name: '应用编辑',
+      component: () => import('../pages/app/AppEditPage.vue'),
       props: true,
     },
   ],
