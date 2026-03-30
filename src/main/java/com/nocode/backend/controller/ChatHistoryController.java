@@ -1,18 +1,24 @@
 package com.nocode.backend.controller;
 
 import com.mybatisflex.core.paginate.Page;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.mybatisflex.core.query.QueryWrapper;
+import com.nocode.backend.annotation.AuthCheck;
+import com.nocode.backend.common.BaseResponse;
+import com.nocode.backend.common.DeleteRequest;
+import com.nocode.backend.common.ResultUtils;
+import com.nocode.backend.constant.UserConstant;
+import com.nocode.backend.exception.ErrorCode;
+import com.nocode.backend.exception.ThrowUtils;
+import com.nocode.backend.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.nocode.backend.model.entity.ChatHistory;
+import com.nocode.backend.model.entity.User;
 import com.nocode.backend.service.ChatHistoryService;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
+import com.nocode.backend.service.UserService;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 /**
  * 对话历史 控制层。
@@ -23,72 +29,115 @@ import java.util.List;
 @RequestMapping("/chatHistory")
 public class ChatHistoryController {
 
-    @Autowired
+    @Resource
     private ChatHistoryService chatHistoryService;
+    @Resource
+    private UserService userService;
+
+    // ==================== 用户接口 ====================
 
     /**
-     * 保存对话历史。
+     * 保存用户消息
      *
-     * @param chatHistory 对话历史
-     * @return {@code true} 保存成功，{@code false} 保存失败
+     * @param appId    应用ID
+     * @param message  消息内容
+     * @param request  请求对象
+     * @return 对话历史ID
      */
-    @PostMapping("save")
-    public boolean save(@RequestBody ChatHistory chatHistory) {
-        return chatHistoryService.save(chatHistory);
+    @PostMapping("/save/userMessage")
+    public BaseResponse<Boolean> saveUserMessage(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(message == null || message.isEmpty(), ErrorCode.PARAMS_ERROR, "消息内容不能为空");
+        User loginUser = userService.getLoginUser(request);
+        boolean result = chatHistoryService.saveUserMessage(appId, loginUser.getId(), message);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 根据主键删除对话历史。
+     * 保存AI消息
      *
-     * @param id 主键
-     * @return {@code true} 删除成功，{@code false} 删除失败
+     * @param appId    应用ID
+     * @param message  消息内容
+     * @param request  请求对象
+     * @return 对话历史ID
      */
-    @DeleteMapping("remove/{id}")
-    public boolean remove(@PathVariable Long id) {
-        return chatHistoryService.removeById(id);
+    @PostMapping("/save/aiMessage")
+    public BaseResponse<Boolean> saveAIMessage(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(message == null || message.isEmpty(), ErrorCode.PARAMS_ERROR, "消息内容不能为空");
+        User loginUser = userService.getLoginUser(request);
+        boolean result = chatHistoryService.saveAIMessage(appId, loginUser.getId(), message);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 根据主键更新对话历史。
+     * 保存错误消息
      *
-     * @param chatHistory 对话历史
-     * @return {@code true} 更新成功，{@code false} 更新失败
+     * @param appId         应用ID
+     * @param errorMessage  错误消息内容
+     * @param request       请求对象
+     * @return 对话历史ID
      */
-    @PutMapping("update")
-    public boolean update(@RequestBody ChatHistory chatHistory) {
-        return chatHistoryService.updateById(chatHistory);
+    @PostMapping("/save/errorMessage")
+    public BaseResponse<Boolean> saveErrorMessage(@RequestParam Long appId, @RequestParam String errorMessage, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(errorMessage == null || errorMessage.isEmpty(), ErrorCode.PARAMS_ERROR, "错误消息内容不能为空");
+        User loginUser = userService.getLoginUser(request);
+        boolean result = chatHistoryService.saveErrorMessage(appId, loginUser.getId(), errorMessage);
+        return ResultUtils.success(result);
     }
 
     /**
-     * 查询所有对话历史。
+     * 分页查询应用的对话历史
      *
-     * @return 所有数据
-     */
-    @GetMapping("list")
-    public List<ChatHistory> list() {
-        return chatHistoryService.list();
-    }
-
-    /**
-     * 根据主键获取对话历史。
-     *
-     * @param id 对话历史主键
-     * @return 对话历史详情
-     */
-    @GetMapping("getInfo/{id}")
-    public ChatHistory getInfo(@PathVariable Long id) {
-        return chatHistoryService.getById(id);
-    }
-
-    /**
-     * 分页查询对话历史。
-     *
-     * @param page 分页对象
+     * @param appId     应用ID
+     * @param pageSize  每页大小
+     * @param lastCreateTime 最近创建时间
+     * @param request   请求对象
      * @return 分页对象
      */
-    @GetMapping("page")
-    public Page<ChatHistory> page(Page<ChatHistory> page) {
-        return chatHistoryService.page(page);
+    @GetMapping("/app/{appId}")
+    public BaseResponse<Page<ChatHistory>> listChatHistoryByAppId(@PathVariable Long appId, @RequestParam(defaultValue = "10") int pageSize, @RequestParam(required = false)LocalDateTime lastCreateTime, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
+        ThrowUtils.throwIf(pageSize <= 0 || pageSize > 50, ErrorCode.PARAMS_ERROR, "每页大小错误");
+        User loginUser = userService.getLoginUser(request);
+        Page<ChatHistory> result = chatHistoryService.listAppChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
+        return ResultUtils.success(result);
+    }
+
+    // ==================== 管理员接口 ====================
+
+    /**
+     * 管理员查询所有对话历史
+     * @param chatHistoryQueryRequest 对话请求对象
+     * @param request 请求对象
+     * @return 分页对话历史
+     */
+    @PostMapping("/admin/list/page/vo")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<ChatHistory>> listAllChatHistory(@RequestBody ChatHistoryQueryRequest chatHistoryQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(chatHistoryQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        int pageNum = chatHistoryQueryRequest.getPageNum();
+        int pageSize = chatHistoryQueryRequest.getPageSize();
+        ThrowUtils.throwIf(pageSize <= 0 || pageSize > 50, ErrorCode.PARAMS_ERROR, "每页大小错误");
+        // 管理员既可能按id查询，又可能查询全部，所以不用封装好的listAppChatHistoryByPage方法，而是现场组装一个命令
+        QueryWrapper queryWrapper = chatHistoryService.getQueryWrapper(chatHistoryQueryRequest);
+        Page<ChatHistory> result = chatHistoryService.page(Page.of(pageNum, pageSize), queryWrapper);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 根据应用ID删除对话历史
+     *
+     * @param deleteRequest 删除请求
+     * @return 是否成功
+     */
+    @PostMapping("/admin/deleteByAppId")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> deleteChatHistoryByAppId(@RequestBody DeleteRequest deleteRequest) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
+        boolean result = chatHistoryService.deleteChatHistoryByAppId(deleteRequest.getId());
+        return ResultUtils.success(result);
     }
 
 }
