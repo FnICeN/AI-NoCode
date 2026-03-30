@@ -45,57 +45,57 @@ const goToRegister = () => {
 
 <template>
   <div class="userLoginPage">
-    <div class="login-card">
-      <div class="login-header">
-        <img class="logo" src="@/assets/logo.svg" alt="Logo" />
-        <h2 class="title">用户登录</h2>
-      </div>
-
-      <a-form
-        :model="formState"
-        layout="vertical"
-        @finish="handleSubmit"
-      >
-        <a-form-item label="用户账号" name="userAccount">
-          <a-input
-            v-model:value="formState.userAccount"
-            placeholder="请输入用户账号"
-            size="large"
-            allow-clear
-          />
-        </a-form-item>
-
-        <a-form-item label="密码" name="userPassword">
-          <a-input-password
-            v-model:value="formState.userPassword"
-            placeholder="请输入密码"
-            size="large"
-            allow-clear
-          />
-        </a-form-item>
-
-        <a-form-item>
-          <a-button
-            type="primary"
-            html-type="submit"
-            size="large"
-            block
-            :loading="loading"
-          >
-            登录
-          </a-button>
-        </a-form-item>
-
-        <div class="register-link">
-          还没有账号？
-          <a @click="goToRegister">立即注册</a>
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <img class="logo" src="@/assets/logo.svg" alt="Logo" />
+          <h2 class="title">用户登录</h2>
         </div>
-      </a-form>
+
+        <a-form :model="formState" layout="vertical" @finish="handleSubmit">
+          <a-form-item label="用户账号" name="userAccount">
+            <a-input
+              v-model:value="formState.userAccount"
+              placeholder="请输入用户账号"
+              size="large"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-form-item label="密码" name="userPassword">
+            <a-input-password
+              v-model:value="formState.userPassword"
+              placeholder="请输入密码"
+              size="large"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-form-item>
+            <a-button type="primary" html-type="submit" size="large" block :loading="loading">
+              登录
+            </a-button>
+          </a-form-item>
+
+          <div class="register-link">
+            还没有账号？
+            <a @click="goToRegister">立即注册</a>
+          </div>
+        </a-form>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.userLoginPage {
+  padding: 40px 0;
+}
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 .login-card {
   width: 400px;
   padding: 40px;

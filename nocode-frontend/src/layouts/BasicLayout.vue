@@ -4,27 +4,18 @@
     <GlobalHeader />
 
     <!-- 主要内容区域 -->
-    <a-layout-content :class="['main-content', { 'full-width': isFullWidthRoute }]">
+    <a-layout-content class="main-content">
       <router-view />
     </a-layout-content>
 
     <!-- 底部版权信息 -->
-    <GlobalFooter v-if="!isFullWidthRoute" />
+    <GlobalFooter />
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import GlobalHeader from '@/components/GlobalHeader.vue'
 import GlobalFooter from '@/components/GlobalFooter.vue'
-
-const route = useRoute()
-
-// 判断是否为需要全宽显示的路由（如对话页面）
-const isFullWidthRoute = computed(() => {
-  return route.path.startsWith('/app/chat')
-})
 </script>
 
 <style scoped>
@@ -34,10 +25,8 @@ const isFullWidthRoute = computed(() => {
 }
 
 .main-content {
-  max-width: 1200px;
   padding: 24px;
   background: white;
-  margin: 16px auto 56px;
 }
 
 .main-content.full-width {
