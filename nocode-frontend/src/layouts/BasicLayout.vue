@@ -25,8 +25,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 }
 
 .main-content {
-  padding: 24px;
-  background: white;
+  background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .main-content.full-width {

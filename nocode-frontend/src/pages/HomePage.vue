@@ -152,11 +152,7 @@ onMounted(() => {
   <div class="home-page">
     <!-- 网站标题区域 -->
     <div class="hero-section">
-      <h1 class="main-title">
-        一句话
-        <span class="cat-icon">🐱</span>
-        呈所想
-      </h1>
+      <h1 class="main-title">一句话&emsp;呈所想</h1>
       <p class="sub-title">与 AI 对话轻松创建应用和网站</p>
 
       <!-- 输入框区域 -->
@@ -312,19 +308,10 @@ onMounted(() => {
   font-size: 48px;
   font-weight: bold;
   margin-bottom: 16px;
-  color: #1f1f1f;
-}
-
-.cat-icon {
-  display: inline-block;
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  line-height: 48px;
-  font-size: 24px;
-  margin: 0 8px;
-  vertical-align: middle;
+  color: transparent;
+  background-image: linear-gradient(to top, #0c3483 0%, #a2b6df 100%, #6b8cce 100%, #a2b6df 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
 }
 
 .sub-title {
