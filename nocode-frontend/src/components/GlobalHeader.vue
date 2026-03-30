@@ -107,7 +107,7 @@ const handleMenuClick: MenuProps['onClick'] = (e) => {
 // 处理注销
 const doLogout = async () => {
   try {
-    let res = await logout()
+    const res = await logout()
     if (res.data.code === 0) {
       message.success('注销成功')
       loginUserStore.setLoginUser({
