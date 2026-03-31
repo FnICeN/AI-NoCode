@@ -1,6 +1,11 @@
 spring:
   application:
     name: nocode-backend
+  # session 配置
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -21,6 +26,10 @@ server:
   port: 8080
   servlet:
     context-path: /api
+    # cookie 30 天过期
+    session:
+      cookie:
+        max-age: 2592000
 
 
 # springdoc-openapi项目配置
