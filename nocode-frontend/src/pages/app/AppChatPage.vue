@@ -3,6 +3,7 @@ import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAppById, deployApp } from '@/api/appController'
+import { listChatHistoryByAppId } from '@/api/chatHistoryController'
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -12,13 +13,15 @@ import {
   PaperClipOutlined,
   EditOutlined,
   ThunderboltOutlined,
+  DesktopOutlined,
+  ExportOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons-vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
 
 const route = useRoute()
 const router = useRouter()
 const appId = route.params.appId as string
-const gen = route.query.gen as string
 
 // 应用信息
 const app = ref<API.App>()
@@ -38,6 +41,11 @@ const inputMessage = ref('')
 const sending = ref(false)
 const generating = ref(false)
 
+// 对话历史相关
+const loadingHistory = ref(false)
+const hasMoreHistory = ref(true)
+const lastCreateTime = ref<string>('')
+
 // 网页预览
 const previewUrl = ref('')
 const showPreview = ref(false)
@@ -53,6 +61,58 @@ const deployModalVisible = ref(false)
 // AppEditPage组件引用
 const appEditPageRef = ref<InstanceType<typeof AppEditPage>>()
 
+// 加载对话历史
+const loadChatHistory = async (isLoadMore = false) => {
+  if (!appId || loadingHistory.value || (!isLoadMore && messages.value.length > 0)) return
+
+  loadingHistory.value = true
+  try {
+    const res = await listChatHistoryByAppId({
+      appId: appId,
+      lastCreateTime: isLoadMore ? lastCreateTime.value : undefined,
+    })
+
+    if (res.data.code === 0 && res.data.data) {
+      const chatHistory = res.data.data.records || []
+
+      if (chatHistory.length < 10) {
+        hasMoreHistory.value = false
+      }
+
+      if (chatHistory.length > 0) {
+        lastCreateTime.value = chatHistory[chatHistory.length - 1].createTime || ''
+
+        const newMessages = chatHistory.map((item) => ({
+          id: String(item.id),
+          role: item.messageType === 'user' ? 'user' : 'assistant',
+          content: item.message || '',
+        }))
+
+        if (isLoadMore) {
+          messages.value = [...newMessages, ...messages.value]
+        } else {
+          messages.value = newMessages.reverse()
+        }
+      }
+
+      // 如果是首次加载且没有对话历史，并且是自己的app，自动发送初始消息
+      if (!isLoadMore && chatHistory.length === 0) {
+        const userMessage : Message = {
+          id: appId,
+          role: 'user',
+          content: app.value?.initPrompt,
+        }
+        messages.value.push(userMessage)
+        await sendInitialMessage(String(app.value?.initPrompt || ''))
+      }
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '网络错误'
+    message.error('加载对话历史失败：' + errorMessage)
+  } finally {
+    loadingHistory.value = false
+  }
+}
 
 // 获取应用详情
 const fetchAppDetail = async () => {
@@ -66,11 +126,13 @@ const fetchAppDetail = async () => {
     const res = await getAppById({ id: appId })
     if (res.data.code === 0 && res.data.data) {
       app.value = res.data.data
-      constructPageInfo(res.data.data)
-      // 只有当是新建项目（没有 codeGenType）且有初始提示词时才自动发送消息
-      if (gen === '1') {
-        await sendInitialMessage(String(app.value.initPrompt))
+      // 展示预览
+      if (res.data.data.id && res.data.data.codeGenType) {
+        previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/`
+        showPreview.value = true
       }
+      // 加载对话历史
+      await loadChatHistory()
     } else {
       message.error(res.data.msg || '获取应用信息失败')
     }
@@ -82,17 +144,10 @@ const fetchAppDetail = async () => {
   }
 }
 
-// 构建页面信息
+// 构建页面信息 (不再使用，已整合到loadChatHistory中)
 const constructPageInfo = (data: API.App) => {
-  // 添加对话
-  const userMessage: Message = {
-    id: String(data.id),
-    role: 'user',
-    content: String(data.initPrompt),
-  }
-  messages.value.push(userMessage)
   // 展示预览
-  if (data.id) {
+  if (data.id && data.codeGenType) {
     previewUrl.value = `http://localhost:8080/api/static/${data.codeGenType}_${data.id}/`
     showPreview.value = true
   }
@@ -274,7 +329,6 @@ const handleModalOk = async () => {
   displayModal.value = false
 }
 
-
 // 格式化消息内容（支持代码块）
 const formatMessage = (content: string) => {
   // 简单处理，将代码块用pre标签包裹
@@ -328,6 +382,13 @@ watch(messages, scrollToBottom, { deep: true })
       <div class="chat-left">
         <!-- 消息区域 -->
         <div ref="messageContainerRef" class="message-container">
+          <!-- 加载更多按钮 -->
+          <div v-if="hasMoreHistory && messages.length > 0" class="load-more">
+            <a-button type="link" :loading="loadingHistory" @click="loadChatHistory(true)">
+              加载更多历史消息
+            </a-button>
+          </div>
+
           <div v-if="messages.length === 0 && !appLoading" class="empty-messages">
             <a-empty description="开始和 AI 对话生成应用吧" />
           </div>
@@ -495,6 +556,13 @@ watch(messages, scrollToBottom, { deep: true })
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.load-more {
+  text-align: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 16px;
 }
 
 .messages-list {

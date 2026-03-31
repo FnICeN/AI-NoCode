@@ -47,7 +47,7 @@ const handleCreateApp = async () => {
     if (res.data.code === 0 && res.data.data) {
       const appId = res.data.data
       message.success('应用创建成功，即将进入对话页面')
-      router.push(`/app/chat/${appId}?gen=1`)
+      router.push(`/app/chat/${appId}`)
     } else {
       message.error(res.data.msg || '创建应用失败')
     }
@@ -116,7 +116,7 @@ const handleFeaturedAppsPageChange = (page: number) => {
 
 // 跳转到应用对话页
 const goToAppChat = (appId: number) => {
-  router.push(`/app/chat/${appId}?gen=0`)
+  router.push(`/app/chat/${appId}`)
 }
 
 // 格式化时间
