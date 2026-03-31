@@ -21,7 +21,6 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 <style scoped>
 .basic-layout {
   background: none;
-  min-height: 100vh;
 }
 
 .main-content {

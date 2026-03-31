@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { getAppById, updateApp, updateAppByAdmin } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { QuestionCircleOutlined } from '@ant-design/icons-vue'
 
 const route = useRoute()
-const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
-const appId = route.params.appId as string
 const app = ref<API.App>()
 const loading = ref(false)
 const saving = ref(false)
@@ -20,16 +18,32 @@ const formData = reactive({
   cover: '',
   priority: 0,
 })
+const props = defineProps({
+  id: String,
+})
+
+// 响应式appId
+const appId = ref(props.id || (route.params.appId as string))
+
+// 监听id prop变化
+watch(
+  () => props.id,
+  (newId) => {
+    if (newId) {
+      appId.value = newId
+      fetchAppDetail()
+    }
+  },
+)
 
 const fetchAppDetail = async () => {
-  if (!appId) {
+  if (!appId.value) {
     message.error('应用ID无效')
-    router.push('/')
     return
   }
   loading.value = true
   try {
-    const res = await getAppById({ id: appId })
+    const res = await getAppById({ id: appId.value })
     if (res.data.code === 0 && res.data.data) {
       app.value = res.data.data
       formData.appName = res.data.data.appName || ''
@@ -44,7 +58,6 @@ const fetchAppDetail = async () => {
         String(loginUser.id) !== String(res.data.data.userId)
       ) {
         message.error('没有权限编辑此应用')
-        router.push('/')
       }
     } else {
       message.error(res.data.msg || '获取应用信息失败')
@@ -68,7 +81,7 @@ const handleSave = async () => {
     if (loginUser && loginUser.userRole === 'admin') {
       // 管理员可以修改更多字段
       res = await updateAppByAdmin({
-        id: appId,
+        id: appId.value,
         appName: formData.appName,
         cover: formData.cover,
         priority: formData.priority,
@@ -76,15 +89,13 @@ const handleSave = async () => {
     } else {
       // 普通用户只能修改应用名称
       res = await updateApp({
-        id: Number(appId),
+        id: appId.value,
         appName: formData.appName,
       })
     }
 
     if (res.data.code === 0 && res.data.data) {
       message.success('保存成功')
-      // 回到上级页面
-      router.push('/')
     } else {
       message.error(res.data.msg || '保存失败')
     }
@@ -96,17 +107,16 @@ const handleSave = async () => {
   }
 }
 
-const handleCancel = () => {
-  // 回到上级页面
-  router.push('/')
-}
-
 onMounted(async () => {
   // 确保获取登录用户信息
   if (!loginUserStore.loginUser) {
     await loginUserStore.fetchLoginUser()
   }
   await fetchAppDetail()
+})
+
+defineExpose({
+  handleSave,
 })
 </script>
 
@@ -143,13 +153,6 @@ onMounted(async () => {
 
         <a-form-item label="创建时间">
           <a-input :value="app.createTime" disabled />
-        </a-form-item>
-
-        <a-form-item>
-          <a-space>
-            <a-button type="primary" :loading="saving" @click="handleSave"> 保存 </a-button>
-            <a-button @click="handleCancel"> 取消 </a-button>
-          </a-space>
         </a-form-item>
       </a-form>
 

@@ -13,6 +13,7 @@ import {
   EditOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons-vue'
+import AppEditPage from '@/pages/app/AppEditPage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +33,7 @@ interface Message {
 }
 
 const messages = ref<Message[]>([])
+const displayModal = ref(false)
 const inputMessage = ref('')
 const sending = ref(false)
 const generating = ref(false)
@@ -47,6 +49,10 @@ const messageContainerRef = ref<HTMLDivElement>()
 const deploying = ref(false)
 const deployUrl = ref('')
 const deployModalVisible = ref(false)
+
+// AppEditPage组件引用
+const appEditPageRef = ref<InstanceType<typeof AppEditPage>>()
+
 
 // 获取应用详情
 const fetchAppDetail = async () => {
@@ -242,7 +248,7 @@ const handleDeploy = async () => {
 }
 
 const handleEdit = (id: string) => {
-  router.push(`/app/edit/${id}`)
+  displayModal.value = true
 }
 
 // 复制部署链接
@@ -255,6 +261,19 @@ const copyDeployUrl = () => {
 const openDeployUrl = () => {
   window.open(deployUrl.value, '_blank')
 }
+
+// 处理模态框确定按钮
+const handleModalOk = async () => {
+  // 调用AppEditPage组件的保存方法
+  if (appEditPageRef.value) {
+    await appEditPageRef.value.handleSave()
+  }
+  // 保存成功后，刷新应用信息
+  await fetchAppDetail()
+  // 关闭模态框
+  displayModal.value = false
+}
+
 
 // 格式化消息内容（支持代码块）
 const formatMessage = (content: string) => {
@@ -288,6 +307,14 @@ watch(messages, scrollToBottom, { deep: true })
           <template #icon><info-circle-outlined /></template>
           应用详情
         </a-button>
+        <a-modal
+          title="应用信息修改"
+          :open="displayModal"
+          @cancel="displayModal = false"
+          @ok="handleModalOk"
+        >
+          <AppEditPage ref="appEditPageRef" v-bind:id="appId" />
+        </a-modal>
         <a-button type="primary" :loading="deploying" @click="handleDeploy">
           <template #icon><cloud-upload-outlined /></template>
           部署

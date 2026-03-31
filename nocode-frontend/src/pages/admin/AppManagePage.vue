@@ -3,9 +3,9 @@ import { onMounted, reactive, ref } from 'vue'
 import { listAppVOsByPageByAdmin, deleteAppByAdmin, updateAppByAdmin } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { useRouter } from 'vue-router'
+import AppEditPage from '@/pages/app/AppEditPage.vue'
 
-const router = useRouter()
+const editModalRef = ref<InstanceType<typeof AppEditPage>>()
 
 const columns = [
   {
@@ -45,6 +45,8 @@ const columns = [
 const data = ref<API.AppVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const displayModal = ref(false)
+const currentAppId = ref('')
 
 const searchParams = reactive<API.AppAdminQueryRequest>({
   pageNum: 1,
@@ -90,10 +92,6 @@ const handleDelete = async (id: string) => {
   }
 }
 
-const handleEdit = (id: string) => {
-  router.push(`/app/edit/${id}`)
-}
-
 const handleFeature = async (id: string, priority: number) => {
   try {
     if (priority !== 99) {
@@ -127,6 +125,15 @@ const handleFeature = async (id: string, priority: number) => {
 const doSearch = () => {
   searchParams.pageNum = 1
   fetchData()
+}
+
+const handleOk = async () => {
+  if (editModalRef.value) {
+    await editModalRef.value.handleSave()
+  }
+  await fetchData()
+  displayModal.value = false
+  currentAppId.value = ''
 }
 
 onMounted(() => {
@@ -186,7 +193,13 @@ onMounted(() => {
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button size="small" type="primary" @click="handleEdit(record.id)"> 编辑 </a-button>
+              <a-button
+                size="small"
+                type="primary"
+                @click="displayModal = true;currentAppId = record.id;console.log(currentAppId)"
+              >
+                编辑
+              </a-button>
               <a-popconfirm
                 title="确定要删除该应用吗？"
                 ok-text="确定"
@@ -206,6 +219,16 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
+
+      <!-- 编辑应用模态框 -->
+      <a-modal
+        :open="displayModal"
+        title="编辑应用信息"
+        @ok="handleOk"
+        @cancel="displayModal = false"
+      >
+        <AppEditPage ref="editModalRef" v-bind:id="currentAppId" />
+      </a-modal>
     </a-card>
   </div>
 </template>

@@ -35,12 +35,12 @@ const router = createRouter({
       component: () => import('../pages/app/AppChatPage.vue'),
       props: true,
     },
-    {
-      path: '/app/edit/:appId',
-      name: '应用编辑',
-      component: () => import('../pages/app/AppEditPage.vue'),
-      props: true,
-    },
+    // {
+    //   path: '/app/edit/:appId',
+    //   name: '应用编辑',
+    //   component: () => import('../pages/app/AppEditPage.vue'),
+    //   props: true,
+    // },
   ],
 })
 
