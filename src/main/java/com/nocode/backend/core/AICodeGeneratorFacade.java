@@ -1,6 +1,7 @@
 package com.nocode.backend.core;
 
 import com.nocode.backend.ai.AICodeGeneratorService;
+import com.nocode.backend.ai.AICodeGeneratorServiceFactory;
 import com.nocode.backend.ai.model.HtmlCodeResult;
 import com.nocode.backend.ai.model.MultiFileCodeResult;
 import com.nocode.backend.core.parser.CodeParserExecutor;
@@ -22,7 +23,7 @@ import java.io.File;
 @Service
 public class AICodeGeneratorFacade {
     @Resource
-    private AICodeGeneratorService aiCodeGeneratorService;
+    private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     /**
      * 根据类型生成并保存代码
@@ -35,6 +36,8 @@ public class AICodeGeneratorFacade {
     public File generateAndSaveCode(String userMessage, CodeGenTypeEnum codeGenType, Long appId) {
         if (codeGenType == null)
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不可为空");
+        // 根据appId获取定制AI Service
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId);
         return switch (codeGenType) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
@@ -59,6 +62,7 @@ public class AICodeGeneratorFacade {
     public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType, Long appId) {
         if (codeGenType == null)
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不可为空");
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId);
         return switch (codeGenType) {
             case HTML -> {
                 Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
