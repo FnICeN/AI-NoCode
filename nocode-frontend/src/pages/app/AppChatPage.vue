@@ -18,6 +18,7 @@ import {
   ArrowUpOutlined,
 } from '@ant-design/icons-vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,7 +98,7 @@ const loadChatHistory = async (isLoadMore = false) => {
 
       // 如果是首次加载且没有对话历史，并且是自己的app，自动发送初始消息
       if (!isLoadMore && chatHistory.length === 0) {
-        const userMessage : Message = {
+        const userMessage: Message = {
           id: appId,
           role: 'user',
           content: app.value?.initPrompt,
@@ -188,6 +189,7 @@ const startChat = async (messageText: string) => {
 
     // 接收消息
     eventSource.onmessage = (event) => {
+      if (streamCompleted) return
       try {
         const parsed = JSON.parse(event.data)
         // 后端返回格式是 {"d":"内容"}
@@ -198,9 +200,14 @@ const startChat = async (messageText: string) => {
         }
       } catch (error) {
         // 如果不是JSON，直接追加
-        fullContent += event.data
-        aiMessage.value.content = fullContent
-        scrollToBottom()
+        // fullContent += event.data
+        // aiMessage.value.content = fullContent
+        // scrollToBottom()
+        console.error('解析消息失败:', error)
+        const errorMessage = error instanceof Event ? '连接错误' : '网络错误'
+        message.error('对话失败：' + errorMessage)
+        aiMessage.value.content = '抱歉，发生了错误，请重试。'
+        aiMessage.value.isStreaming = false
       }
     }
 
@@ -403,7 +410,7 @@ watch(messages, scrollToBottom, { deep: true })
                 </a-avatar>
               </div>
               <div class="message-bubble">
-                <div class="message-text" v-html="formatMessage(msg.content)" />
+                <MarkdownRenderer :content="msg.content" />
               </div>
             </div>
           </div>
