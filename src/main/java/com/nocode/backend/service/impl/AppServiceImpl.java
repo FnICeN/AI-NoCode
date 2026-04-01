@@ -71,6 +71,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(appAddRequest, app);
         app.setAppName(appName);
         app.setUserId(loginUser.getId());
+        // TODO: 创建应用时默认设置为多文件生成应用，之后可能要改
         app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
         app.setPriority(0);
         app.setEditTime(LocalDateTime.now());

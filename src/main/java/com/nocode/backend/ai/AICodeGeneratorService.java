@@ -2,6 +2,7 @@ package com.nocode.backend.ai;
 
 import com.nocode.backend.ai.model.HtmlCodeResult;
 import com.nocode.backend.ai.model.MultiFileCodeResult;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import reactor.core.publisher.Flux;
@@ -43,4 +44,15 @@ public interface AICodeGeneratorService {
      */
     @SystemMessage(fromResource = "prompt/multi-file-gen.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
+
+    /**
+     * 生成 Vue 项目代码（流式）
+     *
+     * @param appId 应用ID（为了取到工具上下文）
+     * @param userMessage 用户消息
+     * @return 生成过程的流式响应
+     */
+    @SystemMessage(fromResource = "prompt/vue-project-gen.txt")
+    Flux<String> generateVueProjectCodeStream(@MemoryId long appId, @UserMessage String userMessage);
+
 }

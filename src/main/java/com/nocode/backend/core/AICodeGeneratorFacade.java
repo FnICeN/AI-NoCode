@@ -37,7 +37,7 @@ public class AICodeGeneratorFacade {
         if (codeGenType == null)
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不可为空");
         // 根据appId获取定制AI Service
-        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId);
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId, codeGenType);
         return switch (codeGenType) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
@@ -62,7 +62,9 @@ public class AICodeGeneratorFacade {
     public Flux<String> generateAndSaveCodeStream(String userMessage, CodeGenTypeEnum codeGenType, Long appId) {
         if (codeGenType == null)
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不可为空");
-        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId);
+        // 这里获得的Service根据传入的codeGenType决定，可能是chat也可能是reason
+        // 获取Service时统一调用双参数方法，如果是VUE则正好获得reason模型，如果不是则获得chat模型，正好可以给HTML和MULTI_FILE用
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAICodeGeneratorService(appId, codeGenType);
         return switch (codeGenType) {
             case HTML -> {
                 Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
@@ -70,6 +72,12 @@ public class AICodeGeneratorFacade {
             }
             case MULTI_FILE -> {
                 Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+                yield processCodeStream(result, CodeGenTypeEnum.MULTI_FILE, appId);
+            }
+            case VUE_PROJECT -> {
+                Flux<String> result = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                // TODO: 这里临时使用MULTI_FILE的解析与保存用于测试
+                //  Service带工具调用和推理模型（当前暂用chat模型）且使用Vue的提示词，但保存的逻辑还是MULTI_FILE
                 yield processCodeStream(result, CodeGenTypeEnum.MULTI_FILE, appId);
             }
             default -> throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型错误");
