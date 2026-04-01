@@ -1,14 +1,21 @@
 package com.nocode.backend.core;
 
+import cn.hutool.json.JSONUtil;
 import com.nocode.backend.ai.AICodeGeneratorService;
 import com.nocode.backend.ai.AICodeGeneratorServiceFactory;
 import com.nocode.backend.ai.model.HtmlCodeResult;
 import com.nocode.backend.ai.model.MultiFileCodeResult;
+import com.nocode.backend.ai.model.message.AIResponseMessage;
+import com.nocode.backend.ai.model.message.ToolExecutedMessage;
+import com.nocode.backend.ai.model.message.ToolRequestMessage;
 import com.nocode.backend.core.parser.CodeParserExecutor;
 import com.nocode.backend.core.saver.CodeFileSaverExecutor;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -75,13 +82,46 @@ public class AICodeGeneratorFacade {
                 yield processCodeStream(result, CodeGenTypeEnum.MULTI_FILE, appId);
             }
             case VUE_PROJECT -> {
-                Flux<String> result = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                // TODO: 这里临时使用MULTI_FILE的解析与保存用于测试
-                //  Service带工具调用和推理模型（当前暂用chat模型）且使用Vue的提示词，但保存的逻辑还是MULTI_FILE
-                yield processCodeStream(result, CodeGenTypeEnum.MULTI_FILE, appId);
+                // 获取的是 reason 模型进行 Vue 项目生成
+                TokenStream result = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                // 转换为 Flux<String>，返回的是流式的一个个JSON对象，而非破碎零件，因此下游需要单独处理，与HTML或MULTI_FILE不同
+                yield processTokenStream(result);
             }
             default -> throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型错误");
         };
+    }
+
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        // 这个process可以不用管保存了，因为AI已经使用保存工具保存过了，因此省去了一次chunk拼接，只需要在下游保存到数据库即可
+        return Flux.create(sink -> {
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                // 将 partialResponse 转换为 AIResponseMessage，然后转为JSON传给下游，因为下游会解析JSON
+                        AIResponseMessage aiResponseMessage = new AIResponseMessage(partialResponse);
+                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+                    })
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                    })
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse((ChatResponse response) -> {
+                        sink.complete();
+                    })
+                    .onError((Throwable error) -> {
+                        error.printStackTrace();
+                        sink.error(error);
+                    })
+                    .start();
+        });
     }
 
     /**

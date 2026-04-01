@@ -10,6 +10,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.nocode.backend.constant.AppConstant;
 import com.nocode.backend.core.AICodeGeneratorFacade;
+import com.nocode.backend.core.handler.StreamHandlerExecutor;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
 import com.nocode.backend.exception.ThrowUtils;
@@ -17,7 +18,6 @@ import com.nocode.backend.mapper.AppMapper;
 import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
 import com.nocode.backend.model.entity.User;
-import com.nocode.backend.model.enums.ChatHistoryMessageTypeEnum;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
 import com.nocode.backend.model.vo.AppVO;
 import com.nocode.backend.model.vo.UserVO;
@@ -53,6 +53,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private ChatHistoryService chatHistoryService;
     @Resource
     private AICodeGeneratorFacade aiCodeGeneratorFacade;
+    @Resource
+    private StreamHandlerExecutor streamHandlerExecutor;
 
     @Override
     public long addApp(AppAddRequest appAddRequest, User loginUser) {
@@ -71,8 +73,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(appAddRequest, app);
         app.setAppName(appName);
         app.setUserId(loginUser.getId());
-        // TODO: 创建应用时默认设置为多文件生成应用，之后可能要改
-        app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
+        // TODO: 创建应用时默认设置为Vue工程生成应用，之后可能要改
+        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
         app.setPriority(0);
         app.setEditTime(LocalDateTime.now());
 
@@ -379,6 +381,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     /**
+     * 被Controller直接调用的代码生成
      *
      * @param appId 应用ID
      * @param message 提示词
@@ -394,6 +397,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
 
+        // 获取生成类型
         String codeGenType = app.getCodeGenType();
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "生成类型错误");
@@ -401,20 +405,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 保存User历史记录
         chatHistoryService.saveUserMessage(appId, loginUser.getId(), message);
         // 获取AI回复流
-        Flux<String> contentFlux = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
-        // 收集AI响应内容，保存到数据库
-        StringBuilder aiResponseBuilder = new StringBuilder();
-        return contentFlux.map(chunk -> {
-            aiResponseBuilder.append(chunk);
-            return chunk;
-        }).doOnComplete(() -> {
-            // 保存AI历史记录
-            chatHistoryService.saveAIMessage(appId, loginUser.getId(), aiResponseBuilder.toString());
-        }).doOnError(error -> {
-            // 即使回复失败也保存
-            String errorMsg = "AI回复失败：" + error.getMessage();
-            chatHistoryService.saveMessage(appId, loginUser.getId(), errorMsg, ChatHistoryMessageTypeEnum.AI.getValue());
-        });
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 根据不同的业务类型进行不同的流处理（保存对话记录）
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
     }
 
     @Override
