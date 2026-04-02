@@ -8,6 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.nocode.backend.ai.AICodeGenTypeRoutingService;
 import com.nocode.backend.constant.AppConstant;
 import com.nocode.backend.core.AICodeGeneratorFacade;
 import com.nocode.backend.core.builder.VueProjectBuilder;
@@ -62,6 +63,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
     @Resource
     private ScreenshotService screenshotService;
+    @Resource
+    private AICodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @Override
     public long addApp(AppAddRequest appAddRequest, User loginUser) {
@@ -80,8 +83,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(appAddRequest, app);
         app.setAppName(appName);
         app.setUserId(loginUser.getId());
-        // TODO: 创建应用时默认设置为Vue工程生成应用，之后可能要改
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
+        // 使用AI智能路由
+        CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(selectedCodeGenType.getValue());
         app.setPriority(0);
         app.setEditTime(LocalDateTime.now());
 
