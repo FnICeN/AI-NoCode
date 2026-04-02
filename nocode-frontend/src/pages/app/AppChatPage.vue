@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { CodeGenTypeEnum, formatCodeGenType } from '@/utils/CodeGenType.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,7 +130,11 @@ const fetchAppDetail = async () => {
       app.value = res.data.data
       // 展示预览
       if (res.data.data.id && res.data.data.codeGenType) {
-        previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/`
+        if (res.data.data.codeGenType === CodeGenTypeEnum.VUE_PROJECT) {
+          previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/dist/index.html`
+        } else {
+          previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/`
+        }
         showPreview.value = true
       }
       // 加载对话历史
@@ -336,12 +341,6 @@ const handleModalOk = async () => {
   displayModal.value = false
 }
 
-// 格式化消息内容（支持代码块）
-const formatMessage = (content: string) => {
-  // 简单处理，将代码块用pre标签包裹
-  return content.replace(/```([\s\S]*?)```/g, '<pre class="code-block">$1</pre>')
-}
-
 onMounted(() => {
   fetchAppDetail()
 })
@@ -360,7 +359,7 @@ watch(messages, scrollToBottom, { deep: true })
         </a-button>
         <span class="app-name">{{ app?.appName || '未命名应用' }}</span>
         <a-tag v-if="app?.codeGenType" size="small" color="blue">
-          {{ app.codeGenType }}
+          {{ formatCodeGenType(app.codeGenType) }}
         </a-tag>
       </div>
       <div class="header-right">

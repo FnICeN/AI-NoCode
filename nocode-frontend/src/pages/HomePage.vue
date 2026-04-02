@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 import { addApp, listMyAppVoByPage, listFeaturedApps } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { PaperClipOutlined, ThunderboltOutlined, ArrowUpOutlined } from '@ant-design/icons-vue'
+import { formatCodeGenType } from '@/utils/CodeGenType.ts'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
@@ -270,7 +271,7 @@ onMounted(() => {
                     </a-avatar>
                     <span class="app-name">{{ app.appName || '未命名应用' }}</span>
                     <a-tag v-if="app.codeGenType" size="small" color="blue">
-                      {{ app.codeGenType }}
+                      {{ formatCodeGenType(app.codeGenType) }}
                     </a-tag>
                   </div>
                 </template>
