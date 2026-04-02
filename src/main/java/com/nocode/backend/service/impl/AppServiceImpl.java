@@ -10,6 +10,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.nocode.backend.constant.AppConstant;
 import com.nocode.backend.core.AICodeGeneratorFacade;
+import com.nocode.backend.core.builder.VueProjectBuilder;
 import com.nocode.backend.core.handler.StreamHandlerExecutor;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
@@ -55,6 +56,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AICodeGeneratorFacade aiCodeGeneratorFacade;
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     @Override
     public long addApp(AppAddRequest appAddRequest, User loginUser) {
@@ -431,7 +434,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         File sourceDir = new File(sourceDirPath);
         ThrowUtils.throwIf(!sourceDir.exists(), ErrorCode.SYSTEM_ERROR, "代码生成路径不存在");
 
-        // 将文件 从浏览目录复制到部署目录（tmp/code_deploy/{deployKey}）
+        // Vue项目特殊处理目录
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
+            boolean buildRes = vueProjectBuilder.buildProject(sourceDirPath);
+            ThrowUtils.throwIf(!buildRes, ErrorCode.SYSTEM_ERROR, "构建Vue项目失败");
+            File distDir = new File(sourceDirPath, "dist");
+            sourceDir = distDir;
+        }
+
+        // 将文件从浏览目录复制到部署目录（tmp/code_deploy/{deployKey}）
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try {
             FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
