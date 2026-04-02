@@ -24,9 +24,11 @@ import com.nocode.backend.model.vo.AppVO;
 import com.nocode.backend.model.vo.UserVO;
 import com.nocode.backend.service.AppService;
 import com.nocode.backend.service.ChatHistoryService;
+import com.nocode.backend.service.ScreenshotService;
 import com.nocode.backend.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import net.bytebuddy.implementation.bytecode.Throw;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -58,6 +60,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private StreamHandlerExecutor streamHandlerExecutor;
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ScreenshotService screenshotService;
 
     @Override
     public long addApp(AppAddRequest appAddRequest, User loginUser) {
@@ -458,8 +462,31 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         updateApp.setDeployedTime(LocalDateTime.now());
         boolean updateResult = updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
+        // 得到可访问URL
+        String deployUrl = String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 生成截图并保存到数据库
+        if (StrUtil.isBlank(app.getCover()))
+            generateAppScreenshotAsync(appId, deployUrl);
+        else log.info("该应用已生成过封面");
+        return deployUrl;
+    }
 
-        return String.format("%s/%s", AppConstant.CODE_DEPLOY_HOST, deployKey);
+    /**
+     * 异步生成应用截图插入数据库
+     *
+     * @param appId 应用ID
+     * @param deployUrl 部署URL（可访问地址）
+     */
+    public void generateAppScreenshotAsync(Long appId, String deployUrl) {
+        Thread.startVirtualThread(() -> {
+            String screenshotUrl = screenshotService.generateAndUpload(deployUrl);
+            // 更新数据库
+            App updateApp = new App();
+            updateApp.setId(appId);
+            updateApp.setCover(screenshotUrl);
+            boolean updateResult = this.updateById(updateApp);
+            ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面失败");
+        });
     }
 
     /**

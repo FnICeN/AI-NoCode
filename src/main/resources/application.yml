@@ -9,9 +9,9 @@ spring:
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ai_nocode
-    username: root
-    password: 647252
+    url: jdbc:mysql://localhost:3306/db
+    username: name
+    password: pwd
   # redis
   data:
     redis:
@@ -69,3 +69,12 @@ logging:
   charset:
     console: UTF-8
     file: UTF-8
+
+# 添加 COS 对象存储配置（需要从腾讯云获取）
+cos:
+  client:
+    host: your-custom-domain.com
+    secretId: your-secret-id
+    secretKey: your-secret-key
+    region: ap-shanghai
+    bucket: your-bucket-name

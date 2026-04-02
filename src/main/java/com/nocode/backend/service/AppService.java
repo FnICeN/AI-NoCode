@@ -96,6 +96,14 @@ public interface AppService extends IService<App> {
     Page<AppVO> listAppsByAdmin(AppAdminQueryRequest appAdminQueryRequest);
 
     /**
+     * 异步生成应用截图插入数据库
+     *
+     * @param appId 应用ID
+     * @param deployUrl 部署URL（可访问地址）
+     */
+    void generateAppScreenshotAsync(Long appId, String deployUrl);
+
+    /**
      * 获取脱敏后的应用信息
      *
      * @param app 应用实体
