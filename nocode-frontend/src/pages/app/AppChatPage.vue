@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { getAppById, deployApp } from '@/api/appController'
+import { getAppById, deployApp, downloadAppCode } from '@/api/appController'
 import { listChatHistoryByAppId } from '@/api/chatHistoryController'
 import {
   ArrowLeftOutlined,
@@ -16,6 +16,7 @@ import {
   DesktopOutlined,
   ExportOutlined,
   ArrowUpOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
@@ -314,6 +315,48 @@ const handleDeploy = async () => {
   }
 }
 
+// 下载相关
+const downloading = ref(false)
+
+// 下载代码
+const handleDownloadCode = async () => {
+  if (!appId) {
+    message.error('应用ID不存在')
+    return
+  }
+  downloading.value = true
+  try {
+    const API_BASE_URL = 'http://localhost:8080/api'
+    const url = `${API_BASE_URL}/app/download/${appId}`
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      throw new Error(`下载失败: ${response.status}`)
+    }
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition')
+    const fileName =
+      contentDisposition?.match(/filename="(.+)"/)?.[1] || `${app.value?.appName || 'app'}.zip`
+    // 下载文件
+    const blob = await response.blob()
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    link.click()
+    // 清理
+    URL.revokeObjectURL(downloadUrl)
+    message.success('代码下载成功')
+  } catch (error) {
+    console.error('下载失败：', error)
+    message.error('下载失败，请重试')
+  } finally {
+    downloading.value = false
+  }
+}
+
 const handleEdit = (id: string) => {
   displayModal.value = true
 }
@@ -375,6 +418,10 @@ watch(messages, scrollToBottom, { deep: true })
         >
           <AppEditPage ref="appEditPageRef" v-bind:id="appId" />
         </a-modal>
+        <a-button :loading="downloading" @click="handleDownloadCode">
+          <template #icon><download-outlined /></template>
+          下载代码
+        </a-button>
         <a-button type="primary" :loading="deploying" @click="handleDeploy">
           <template #icon><cloud-upload-outlined /></template>
           部署
