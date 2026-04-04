@@ -132,9 +132,9 @@ const fetchAppDetail = async () => {
       // 展示预览
       if (res.data.data.id && res.data.data.codeGenType) {
         if (res.data.data.codeGenType === CodeGenTypeEnum.VUE_PROJECT) {
-          previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/dist/index.html`
+          previewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${res.data.data.codeGenType}_${res.data.data.id}/dist/index.html`
         } else {
-          previewUrl.value = `http://localhost:8080/api/static/${res.data.data.codeGenType}_${res.data.data.id}/`
+          previewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${res.data.data.codeGenType}_${res.data.data.id}/`
         }
         showPreview.value = true
       }
@@ -155,7 +155,7 @@ const fetchAppDetail = async () => {
 const constructPageInfo = (data: API.App) => {
   // 展示预览
   if (data.id && data.codeGenType) {
-    previewUrl.value = `http://localhost:8080/api/static/${data.codeGenType}_${data.id}/`
+    previewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${data.codeGenType}_${data.id}/`
     showPreview.value = true
   }
 }
@@ -182,7 +182,7 @@ const startChat = async (messageText: string) => {
   messages.value.push(aiMessage.value)
 
   try {
-    const url = `http://localhost:8080/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(messageText)}`
+    const url = `${import.meta.env.VITE_API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(messageText)}`
     const eventSource = new EventSource(url, { withCredentials: true })
 
     let fullContent = ''
@@ -225,7 +225,7 @@ const startChat = async (messageText: string) => {
       // 延迟1秒更新预览界面，确保后端完成处理
       setTimeout(() => {
         if (app.value?.codeGenType) {
-          previewUrl.value = `http://localhost:8080/api/static/${app.value.codeGenType}_${appId}/`
+          previewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${app.value.codeGenType}_${appId}/`
           showPreview.value = true
         }
       }, 1000)
@@ -326,8 +326,7 @@ const handleDownloadCode = async () => {
   }
   downloading.value = true
   try {
-    const API_BASE_URL = 'http://localhost:8080/api'
-    const url = `${API_BASE_URL}/app/download/${appId}`
+    const url = `${import.meta.env.VITE_API_BASE_URL}/app/download/${appId}`
     const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
