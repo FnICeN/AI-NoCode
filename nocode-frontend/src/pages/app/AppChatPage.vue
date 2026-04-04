@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAppById, deployApp, downloadAppCode } from '@/api/appController'
@@ -17,10 +17,12 @@ import {
   ExportOutlined,
   ArrowUpOutlined,
   DownloadOutlined,
+  CloseOutlined,
 } from '@ant-design/icons-vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { CodeGenTypeEnum, formatCodeGenType } from '@/utils/CodeGenType.ts'
+import { VisualEditor, type ElementInfo } from '@/utils/visualEditor.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,10 +58,25 @@ const showPreview = ref(false)
 // 消息容器引用
 const messageContainerRef = ref<HTMLDivElement>()
 
+// 预览iframe引用
+const previewIframeRef = ref<HTMLIFrameElement>()
+
 // 部署相关
 const deploying = ref(false)
 const deployUrl = ref('')
 const deployModalVisible = ref(false)
+
+// 可视化编辑相关
+const isEditMode = ref(false)
+const selectedElementInfo = ref<ElementInfo | null>(null)
+const visualEditor = new VisualEditor({
+  onElementSelected: (elementInfo: ElementInfo) => {
+    selectedElementInfo.value = elementInfo
+  },
+})
+
+// 预览相关
+const previewReady = ref(false)
 
 // AppEditPage组件引用
 const appEditPageRef = ref<InstanceType<typeof AppEditPage>>()
@@ -268,7 +285,21 @@ const startChat = async (messageText: string) => {
 const handleSendMessage = async () => {
   if (!inputMessage.value.trim() || sending.value || generating.value) return
 
-  const messageText = inputMessage.value.trim()
+  let messageText = inputMessage.value.trim()
+
+  // 如果有选中的元素，将元素信息添加到提示词中
+  if (selectedElementInfo.value) {
+    let elementContext = `\n\n选中元素信息：`
+    if (selectedElementInfo.value.pagePath) {
+      elementContext += `\n- 页面路径: ${selectedElementInfo.value.pagePath}`
+    }
+    elementContext += `\n- 标签: ${selectedElementInfo.value.tagName.toLowerCase()}\n- 选择器: ${selectedElementInfo.value.selector}`
+    if (selectedElementInfo.value.textContent) {
+      elementContext += `\n- 当前内容: ${selectedElementInfo.value.textContent.substring(0, 100)}`
+    }
+    messageText += elementContext
+  }
+
   inputMessage.value = ''
 
   // 添加用户消息
@@ -283,6 +314,14 @@ const handleSendMessage = async () => {
 
   // 开始AI对话
   await startChat(messageText)
+
+  // 发送消息后，清除选中元素并退出编辑模式
+  if (selectedElementInfo.value) {
+    clearSelectedElement()
+    if (isEditMode.value) {
+      toggleEditMode()
+    }
+  }
 }
 
 // 滚动到底部
@@ -360,6 +399,37 @@ const handleEdit = (id: string) => {
   displayModal.value = true
 }
 
+// 进入编辑模式
+const toggleEditMode = () => {
+  // 检查 iframe 是否已经加载
+  if (!previewIframeRef.value) {
+    message.warning('请等待页面加载完成')
+    return
+  }
+  // 确保 visualEditor 已初始化
+  if (!previewReady.value) {
+    message.warning('请等待页面加载完成')
+    return
+  }
+  const newEditMode = visualEditor.toggleEditMode()
+  isEditMode.value = newEditMode
+}
+
+// 清除选中的元素
+const clearSelectedElement = () => {
+  selectedElementInfo.value = null
+  visualEditor.clearSelection()
+}
+
+// iframe加载完成
+const onIframeLoad = () => {
+  previewReady.value = true
+  if (previewIframeRef.value) {
+    visualEditor.init(previewIframeRef.value)
+    visualEditor.onIframeLoad()
+  }
+}
+
 // 复制部署链接
 const copyDeployUrl = () => {
   navigator.clipboard.writeText(deployUrl.value)
@@ -385,6 +455,18 @@ const handleModalOk = async () => {
 
 onMounted(() => {
   fetchAppDetail()
+
+  // 监听 iframe 消息
+  window.addEventListener('message', (event) => {
+    visualEditor.handleIframeMessage(event)
+  })
+})
+
+onUnmounted(() => {
+  // 如果在编辑模式，退出编辑模式
+  if (isEditMode.value) {
+    visualEditor.disableEditMode()
+  }
 })
 
 // 监听消息变化，自动滚动
@@ -464,10 +546,54 @@ watch(messages, scrollToBottom, { deep: true })
         <!-- 输入框区域 -->
         <div class="input-area">
           <div class="input-wrapper">
+            <!-- 选中元素信息 -->
+            <a-alert
+              v-if="selectedElementInfo"
+              class="selected-element-alert"
+              type="info"
+              show-icon
+              closable
+              @close="clearSelectedElement"
+              style="margin-bottom: 12px"
+            >
+              <template #message>
+                <div class="selected-element-info">
+                  <div class="element-header">
+                    <span class="element-tag">
+                      选中元素：{{ selectedElementInfo.tagName.toLowerCase() }}
+                    </span>
+                    <span v-if="selectedElementInfo.id" class="element-id">
+                      #{{ selectedElementInfo.id }}
+                    </span>
+                    <span v-if="selectedElementInfo.className" class="element-class">
+                      .{{ selectedElementInfo.className.split(' ').join(' .') }}
+                    </span>
+                  </div>
+                  <div class="element-details">
+                    <div v-if="selectedElementInfo.textContent" class="element-item">
+                      内容: {{ selectedElementInfo.textContent.substring(0, 50) }}
+                      {{ selectedElementInfo.textContent.length > 50 ? '...' : '' }}
+                    </div>
+                    <div v-if="selectedElementInfo.pagePath" class="element-item">
+                      页面路径: {{ selectedElementInfo.pagePath }}
+                    </div>
+                    <div class="element-item">
+                      选择器:
+                      <code class="element-selector-code">{{ selectedElementInfo.selector }}</code>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </a-alert>
+
             <a-textarea
               v-model:value="inputMessage"
               class="message-input"
-              placeholder="描述越详细，页面越具体，可以一步一步完善生成效果..."
+              :placeholder="
+                selectedElementInfo
+                  ? `正在编辑 ${selectedElementInfo.tagName.toLowerCase()} 元素，描述您想要的修改...`
+                  : '描述越详细，页面越具体，可以一步一步完善生成效果...'
+              "
               :rows="3"
               :disabled="generating"
               @pressEnter.prevent="handleSendMessage"
@@ -478,9 +604,15 @@ watch(messages, scrollToBottom, { deep: true })
                   <template #icon><paper-clip-outlined /></template>
                   上传
                 </a-button>
-                <a-button type="text" size="small">
+                <a-button
+                  :type="isEditMode ? 'primary' : 'text'"
+                  size="small"
+                  :danger="isEditMode"
+                  @click="toggleEditMode"
+                  :class="{ 'edit-mode-active': isEditMode }"
+                >
                   <template #icon><edit-outlined /></template>
-                  编辑
+                  {{ isEditMode ? '退出编辑' : '编辑' }}
                 </a-button>
                 <a-button type="text" size="small">
                   <template #icon><thunderbolt-outlined /></template>
@@ -516,9 +648,11 @@ watch(messages, scrollToBottom, { deep: true })
             <a-button type="link" @click="showPreview = false"> 隐藏 </a-button>
           </div>
           <iframe
+            ref="previewIframeRef"
             :src="previewUrl"
             class="preview-frame"
             sandbox="allow-scripts allow-same-origin allow-forms"
+            @load="onIframeLoad"
           />
         </div>
       </div>
@@ -774,5 +908,70 @@ watch(messages, scrollToBottom, { deep: true })
 
 .deploy-result {
   padding: 16px 0;
+}
+
+/* 选中元素信息样式 */
+.selected-element-alert {
+  margin: 0 0 12px 0;
+}
+
+.selected-element-info {
+  line-height: 1.4;
+}
+
+.element-header {
+  margin-bottom: 8px;
+}
+
+.element-details {
+  margin-top: 8px;
+}
+
+.element-item {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.element-item:last-child {
+  margin-bottom: 0;
+}
+
+.element-tag {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #007bff;
+}
+
+.element-id {
+  color: #28a745;
+  margin-left: 4px;
+}
+
+.element-class {
+  color: #ffc107;
+  margin-left: 4px;
+}
+
+.element-selector-code {
+  font-family: 'Monaco', 'Menlo', monospace;
+  background: #f6f8fa;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #d73a49;
+  border: 1px solid #e1e4e8;
+}
+
+/* 编辑模式按钮样式 */
+.edit-mode-active {
+  background-color: #52c41a !important;
+  border-color: #52c41a !important;
+  color: white !important;
+}
+
+.edit-mode-active:hover {
+  background-color: #73d13d !important;
+  border-color: #73d13d !important;
 }
 </style>
