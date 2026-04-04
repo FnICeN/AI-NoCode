@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.nocode.backend.ai.model.message.*;
+import com.nocode.backend.ai.tools.BaseTool;
+import com.nocode.backend.ai.tools.ToolManager;
 import com.nocode.backend.constant.AppConstant;
 import com.nocode.backend.core.builder.VueProjectBuilder;
 import com.nocode.backend.model.entity.User;
@@ -28,6 +30,8 @@ public class JsonMessageStreamHandler {
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * 处理 TokenStream（VUE_PROJECT）
@@ -90,24 +94,21 @@ public class JsonMessageStreamHandler {
                 if (toolId != null && !seenToolIds.contains(toolId)) {
                     // 第一次调用这个工具，记录 ID 并完整返回工具信息
                     seenToolIds.add(toolId);
-                    return "\n\n[选择工具] 写入文件\n\n";
+                    // 根据工具名（LC4j注册为工具内的方法名）获取工具信息并返回
+                    return toolManager.getTool(toolRequestMessage.getName()).generateToolRequestResponse();
                 } else {
                     // 不是第一次调用这个工具，直接返回空
                     return "";
                 }
+                // 注意，这里没有将工具调用请求保存到对话历史中，也就不会保存到数据库中，这正好导致了前端处理完流式输出后工具调用请求从AI输出中消失
             }
             case TOOL_EXECUTED -> {
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
                 JSONObject jsonObject = JSONUtil.parseObj(toolExecutedMessage.getArguments());
-                String relativeFilePath = jsonObject.getStr("relativeFilePath");
-                String suffix = FileUtil.getSuffix(relativeFilePath);
-                String content = jsonObject.getStr("content");
-                String result = String.format("""
-                        [工具调用] 写入文件 %s
-                        ```%s
-                        %s
-                        ```
-                        """, relativeFilePath, suffix, content);
+                // 根据工具名称获取工具实例
+                BaseTool tool = toolManager.getTool(toolExecutedMessage.getName());
+                // 获取工具执行结果
+                String result = tool.generateToolExecuteResponse(jsonObject);
                 // 输出前端和要持久化的内容
                 String output = String.format("\n\n%s\n\n", result);
                 chatHistoryStringBuilder.append(output);

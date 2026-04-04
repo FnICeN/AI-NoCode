@@ -2,7 +2,7 @@ package com.nocode.backend.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.nocode.backend.ai.tools.FileWriteTool;
+import com.nocode.backend.ai.tools.*;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
@@ -33,6 +33,8 @@ public class AICodeGeneratorServiceFactory {
     private RedisChatMemoryStore redisChatMemoryStore;
     @Resource
     private ChatHistoryService chatHistoryService;
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * AI 服务实例缓存
@@ -96,7 +98,7 @@ public class AICodeGeneratorServiceFactory {
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemory(chatMemory)
                     .chatMemoryProvider(memoryId -> chatMemory)  // 框架规定使用@MemoryId时必须使用这个方法
-                    .tools(new FileWriteTool())
+                    .tools(toolManager.getAllTools())
                     //  当调用的tool不存在时的处理策略
                     .hallucinatedToolNameStrategy(request ->
                             ToolExecutionResultMessage.from(request, "没有工具：" + request.name()))
