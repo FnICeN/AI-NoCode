@@ -1,36 +1,121 @@
 package com.nocode.backend.langgraph4j.node;
 
-import com.nocode.backend.langgraph4j.ai.ImageCollectionService;
+import com.nocode.backend.langgraph4j.ai.ImageCollectionPlanService;
+import com.nocode.backend.langgraph4j.model.ImageCollectionPlan;
+import com.nocode.backend.langgraph4j.model.ImageResource;
 import com.nocode.backend.langgraph4j.state.WorkflowContext;
+import com.nocode.backend.langgraph4j.tools.ImageSearchTool;
+import com.nocode.backend.langgraph4j.tools.LogoGeneratorTool;
+import com.nocode.backend.langgraph4j.tools.MermaidDiagramTool;
+import com.nocode.backend.langgraph4j.tools.UndrawIllustrationTool;
 import com.nocode.backend.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
 @Slf4j
 public class ImageCollectorNode {
+    // 创建图片收集节点，根据用户输入令AI自主使用工具Tool收集图片
+//    public static AsyncNodeAction<MessagesState<String>> create() {
+//        return node_async(state -> {
+//            WorkflowContext context = WorkflowContext.getContext(state);
+//            log.info("执行节点: 图片收集");
+//            // 获取用户提示词
+//            String userPrompt = context.getOriginalPrompt();
+//            String imageListStr = "";
+//            // 调用图片收集服务
+//            try {
+//                ImageCollectionService imageCollectionService = SpringContextUtil.getBean(ImageCollectionService.class);
+//                imageListStr = imageCollectionService.collectImages(userPrompt);
+//            } catch (Exception e) {
+//                log.error("图片收集失败", e);
+//            }
+//            // 更新state
+//            context.setCurrentStep("图片收集");
+//            log.info("图片收集完成");
+//            context.setImageListStr("注意：Logo URL中可能有Expire参数或AccessId参数，在生成网页时不可简化，否则会导致Logo无法显示！\n"
+//                    + imageListStr);
+//            return WorkflowContext.saveContext(context);
+//        });
+//    }
+
+    /**
+     * 通过AI获取图片收集计划，然后直接调用工具Tool生成格式化的图片列表
+     * @return
+     */
     public static AsyncNodeAction<MessagesState<String>> create() {
         return node_async(state -> {
             WorkflowContext context = WorkflowContext.getContext(state);
-            log.info("执行节点: 图片收集");
-            // 获取用户提示词
-            String userPrompt = context.getOriginalPrompt();
-            String imageListStr = "";
-            // 调用图片收集服务
+            String originalPrompt = context.getOriginalPrompt();
+            List<ImageResource> collectedImages = new ArrayList<>();
+
             try {
-                ImageCollectionService imageCollectionService = SpringContextUtil.getBean(ImageCollectionService.class);
-                imageListStr = imageCollectionService.collectImages(userPrompt);
+                // 第一步：获取图片收集计划
+                ImageCollectionPlanService planService = SpringContextUtil.getBean(ImageCollectionPlanService.class);
+                ImageCollectionPlan plan = planService.planImageCollection(originalPrompt);
+                log.info("获取到图片收集计划，开始并发执行");
+
+                // 第二步：并发执行各种图片收集任务
+                List<CompletableFuture<List<ImageResource>>> futures = new ArrayList<>();
+                // 并发执行内容图片搜索
+                if (plan.getContentImageTasks() != null) {
+                    ImageSearchTool imageSearchTool = SpringContextUtil.getBean(ImageSearchTool.class);
+                    for (ImageCollectionPlan.ImageSearchTask task : plan.getContentImageTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                imageSearchTool.searchContentImages(task.query())));
+                    }
+                }
+                // 并发执行插画图片搜索
+                if (plan.getIllustrationTasks() != null) {
+                    UndrawIllustrationTool illustrationTool = SpringContextUtil.getBean(UndrawIllustrationTool.class);
+                    for (ImageCollectionPlan.IllustrationTask task : plan.getIllustrationTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                illustrationTool.searchIllustrations(task.query())));
+                    }
+                }
+                // 并发执行架构图生成
+                if (plan.getDiagramTasks() != null) {
+                    MermaidDiagramTool diagramTool = SpringContextUtil.getBean(MermaidDiagramTool.class);
+                    for (ImageCollectionPlan.DiagramTask task : plan.getDiagramTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                diagramTool.generateMermaidDiagram(task.mermaidCode(), task.description())));
+                    }
+                }
+                // 并发执行Logo生成
+                if (plan.getLogoTasks() != null) {
+                    LogoGeneratorTool logoTool = SpringContextUtil.getBean(LogoGeneratorTool.class);
+                    for (ImageCollectionPlan.LogoTask task : plan.getLogoTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                logoTool.generateLogos(task.description())));
+                    }
+                }
+
+                // 等待所有任务完成并收集结果
+                // 本质就是使用allOf加入一个新Future，这个Future是否完成，取决于所有子Future是否完成
+                CompletableFuture<Void> allTasks = CompletableFuture.allOf(
+                        futures.toArray(new CompletableFuture[0]));
+                allTasks.join();
+                // 收集所有结果
+                for (CompletableFuture<List<ImageResource>> future : futures) {
+                    List<ImageResource> images = future.get();
+                    if (images != null) {
+                        collectedImages.addAll(images);
+                    }
+                }
+                log.info("并发图片收集完成，共收集到 {} 张图片", collectedImages.size());
             } catch (Exception e) {
-                log.error("图片收集失败", e);
+                log.error("图片收集失败: {}", e.getMessage(), e);
             }
-            // 更新state
+            // 更新状态
             context.setCurrentStep("图片收集");
-            log.info("图片收集完成");
-            context.setImageListStr("注意：Logo URL中可能有Expire参数或AccessId参数，在生成网页时不可简化，否则会导致Logo无法显示！\n"
-                    + imageListStr);
+            context.setImageList(collectedImages);
             return WorkflowContext.saveContext(context);
         });
     }

@@ -29,6 +29,7 @@ public class PromptEnhancerNode {
             if (CollUtil.isNotEmpty(imageList) || StrUtil.isNotBlank(imageListStr)) {
                 enhancedPromptBuilder.append("\n\n## 可用素材资源\n");
                 enhancedPromptBuilder.append("请在生成网站时使用以下图片资源，将这些图片合理地嵌入到网站的相应位置中。\n");
+                enhancedPromptBuilder.append("注意：Logo URL中可能有Expire参数或AccessId参数，在生成网页时不可简化或移除这些参数，否则会导致Logo无法显示！\\n");
                 // 兼容性设计，若列表为空，则直接拼接字符串，否则解析列表拼接
                 if (CollUtil.isNotEmpty(imageList)) {
                     for (ImageResource image : imageList) {
