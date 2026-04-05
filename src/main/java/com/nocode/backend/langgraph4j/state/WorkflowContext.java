@@ -1,6 +1,7 @@
 package com.nocode.backend.langgraph4j.state;
 
 import com.nocode.backend.langgraph4j.model.ImageResource;
+import com.nocode.backend.langgraph4j.model.QualityResult;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -69,6 +70,11 @@ public class WorkflowContext implements Serializable {
      * 构建成功的目录
      */
     private String buildResultDir;
+
+    /**
+     * 代码质量检查结果
+     */
+    private QualityResult qualityResult;
 
     /**
      * 错误信息

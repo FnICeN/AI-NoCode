@@ -2,13 +2,16 @@ package com.nocode.backend.langgraph4j;
 
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
+import com.nocode.backend.langgraph4j.model.QualityResult;
 import com.nocode.backend.langgraph4j.node.*;
 import com.nocode.backend.langgraph4j.state.WorkflowContext;
+import com.nocode.backend.model.enums.CodeGenTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.GraphRepresentation;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.NodeOutput;
+import org.bsc.langgraph4j.action.AsyncEdgeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
 
@@ -16,6 +19,7 @@ import java.util.Map;
 
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
+import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
 
 @Slf4j
 public class CodeGenWorkflow {
@@ -31,6 +35,7 @@ public class CodeGenWorkflow {
                     .addNode("prompt_enhancer", PromptEnhancerNode.create())
                     .addNode("router", RouterNode.create())
                     .addNode("code_generator", CodeGeneratorNode.create())
+                    .addNode("code_quality_check", CodeQualityCheckNode.create())
                     .addNode("project_builder", ProjectBuilderNode.create())
 
                     // 添加边
@@ -38,7 +43,15 @@ public class CodeGenWorkflow {
                     .addEdge("image_collector", "prompt_enhancer")
                     .addEdge("prompt_enhancer", "router")
                     .addEdge("router", "code_generator")
-                    .addEdge("code_generator", "project_builder")
+                    .addEdge("code_generator", "code_quality_check")
+                    // 添加条件边，根据路由结果选择执行不同的节点
+                    .addConditionalEdges("code_quality_check",
+                            edge_async(this::routeAfterQualityCheck),
+                            Map.of(
+                                    "build", "project_builder",   // 质检通过且需要构建
+                                    "skip_build", END,   // 质检通过且不需要构建
+                                    "fail", "code_generator"   // 质检不通过，重新生成或修改
+                                    ))
                     .addEdge("project_builder", END)
 
                     // 编译工作流
@@ -79,5 +92,35 @@ public class CodeGenWorkflow {
         }
         log.info("代码生成工作流执行完成！");
         return finalContext;
+    }
+
+    public String routeAfterQualityCheck(MessagesState<String> state) {
+        WorkflowContext workflowContext = WorkflowContext.getContext(state);
+        if (workflowContext == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "工作流上下文为空");
+        }
+        QualityResult qualityResult = workflowContext.getQualityResult();
+        CodeGenTypeEnum generationType = workflowContext.getGenerationType();
+        // 根据代码检查结果和业务类型决定下一个节点
+        if (qualityResult == null || !qualityResult.getIsValid()) {
+            return "fail";
+        }
+        return generationType == CodeGenTypeEnum.VUE_PROJECT ? "build" : "skip_build";
+    }
+
+    /**
+     * 路由：根据生成类型决定下一步是构建项目还是跳过构建
+     */
+    private String routeBuildOrSkip(MessagesState<String> state) {
+        WorkflowContext workflowContext = WorkflowContext.getContext(state);
+        if (workflowContext == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "工作流上下文为空");
+        }
+        CodeGenTypeEnum generationType = workflowContext.getGenerationType();
+        // 根据路由结果决定下一个节点
+        if (generationType == CodeGenTypeEnum.VUE_PROJECT) {
+            return "build";
+        }
+        return "skip_build";
     }
 }

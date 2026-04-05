@@ -21,8 +21,6 @@ public class PromptEnhancerNode {
             // 从state获取用户提示词和图片列表字符串
             String userPrompt = context.getOriginalPrompt();
             String imageListStr = context.getImageListStr();
-            log.info("用户提示词: {}", userPrompt);
-            log.info("图片列表: {}\n\n", imageListStr);
             List<ImageResource> imageList = context.getImageList();
             // 构建增强后的提示词
             StringBuilder enhancedPromptBuilder = new StringBuilder();

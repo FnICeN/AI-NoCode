@@ -28,8 +28,9 @@ public class ImageCollectorNode {
             }
             // 更新state
             context.setCurrentStep("图片收集");
-            log.info("图片收集完成，图片列表: {}\n\n", imageListStr);
-            context.setImageListStr(imageListStr);
+            log.info("图片收集完成");
+            context.setImageListStr("注意：Logo URL中可能有Expire参数或AccessId参数，在生成网页时不可简化，否则会导致Logo无法显示！\n"
+                    + imageListStr);
             return WorkflowContext.saveContext(context);
         });
     }
