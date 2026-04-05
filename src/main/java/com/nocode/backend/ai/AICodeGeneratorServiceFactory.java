@@ -85,11 +85,11 @@ public class AICodeGeneratorServiceFactory {
                 // 原本按照官方流程，这里应该是调用chatMemoryProvider(memoryId -> ...)，其中memoryId来自AiService接口注册的@MemoryId参数
                 .id(appId)
                 .chatMemoryStore(redisChatMemoryStore)
-                .maxMessages(20)
+                .maxMessages(50)
                 .build();
         // 从数据库加载到记忆，又因为记忆就是依托于Redis，所以相当于是从数据库写入Redis
         log.info("将应用：{} 对话历史从数据库写入Redis...", appId);
-        int count = chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
+        int count = chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 50);
         // 构建不同的AiService(chat、reason工具调用)
         return switch (codeGenType) {
             // Vue 项目生成，使用工具调用和推理模型（当前暂用chat模型）
