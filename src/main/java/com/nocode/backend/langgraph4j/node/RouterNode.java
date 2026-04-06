@@ -1,6 +1,7 @@
 package com.nocode.backend.langgraph4j.node;
 
 import com.nocode.backend.ai.AICodeGenTypeRoutingService;
+import com.nocode.backend.ai.AICodeGenTypeRoutingServiceFactory;
 import com.nocode.backend.langgraph4j.state.WorkflowContext;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
 import com.nocode.backend.utils.SpringContextUtil;
@@ -20,8 +21,9 @@ public class RouterNode {
 
             CodeGenTypeEnum generationType;
             try {
-                // 获取AI路由服务
-                AICodeGenTypeRoutingService routingService = SpringContextUtil.getBean(AICodeGenTypeRoutingService.class);
+                // 获取AI路由服务（工厂类多例模式）
+                AICodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory = SpringContextUtil.getBean(AICodeGenTypeRoutingServiceFactory.class);
+                AICodeGenTypeRoutingService routingService = aiCodeGenTypeRoutingServiceFactory.createAICodeGenTypeRoutingService();
                 // 根据原始提示词进行智能路由（不必用增强过的）
                 generationType = routingService.routeCodeGenType(context.getOriginalPrompt());
                 log.info("AI智能路由完成，选择类型: {} ({})", generationType.getValue(), generationType.getText());

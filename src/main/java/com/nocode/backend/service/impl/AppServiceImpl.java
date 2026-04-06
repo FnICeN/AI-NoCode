@@ -9,6 +9,7 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.nocode.backend.ai.AICodeGenTypeRoutingService;
+import com.nocode.backend.ai.AICodeGenTypeRoutingServiceFactory;
 import com.nocode.backend.constant.AppConstant;
 import com.nocode.backend.core.AICodeGeneratorFacade;
 import com.nocode.backend.core.builder.VueProjectBuilder;
@@ -63,8 +64,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
     @Resource
     private ScreenshotService screenshotService;
+
+    // 由于必须要每次获得一个独立的Service，所以注入的是Factory，用Factory配合getBean（多例）生产独立的Service
     @Resource
-    private AICodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    private AICodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
     @Override
     public long addApp(AppAddRequest appAddRequest, User loginUser) {
@@ -83,7 +86,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(appAddRequest, app);
         app.setAppName(appName);
         app.setUserId(loginUser.getId());
-        // 使用AI智能路由
+        // 使用AI智能路由（Factory实现多例）
+        AICodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.createAICodeGenTypeRoutingService();
         CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(selectedCodeGenType.getValue());
         app.setPriority(0);
