@@ -16,6 +16,8 @@ import com.nocode.backend.model.dto.app.*;
 import com.nocode.backend.model.entity.App;
 import com.nocode.backend.model.entity.User;
 import com.nocode.backend.model.vo.AppVO;
+import com.nocode.backend.ratelimiter.annotation.RateLimit;
+import com.nocode.backend.ratelimiter.enums.RateLimitType;
 import com.nocode.backend.service.AppService;
 import com.nocode.backend.service.ProjectDownloadService;
 import com.nocode.backend.service.UserService;
@@ -59,6 +61,7 @@ public class AppController {
      * @return
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID错误");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "提示词不能为空");

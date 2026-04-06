@@ -8,6 +8,8 @@ import com.nocode.backend.ai.model.MultiFileCodeResult;
 import com.nocode.backend.ai.model.message.AIResponseMessage;
 import com.nocode.backend.ai.model.message.ToolExecutedMessage;
 import com.nocode.backend.ai.model.message.ToolRequestMessage;
+import com.nocode.backend.constant.AppConstant;
+import com.nocode.backend.core.builder.VueProjectBuilder;
 import com.nocode.backend.core.parser.CodeParserExecutor;
 import com.nocode.backend.core.saver.CodeFileSaverExecutor;
 import com.nocode.backend.exception.BusinessException;
@@ -31,6 +33,8 @@ import java.io.File;
 public class AICodeGeneratorFacade {
     @Resource
     private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 根据类型生成并保存代码
@@ -85,7 +89,7 @@ public class AICodeGeneratorFacade {
                 // 获取的是 reason 模型进行 Vue 项目生成
                 TokenStream result = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
                 // 转换为 Flux<String>，返回的是流式的一个个JSON对象，而非破碎零件，因此下游需要单独处理，与HTML或MULTI_FILE不同
-                yield processTokenStream(result);
+                yield processTokenStream(result, appId);
             }
             default -> throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型错误");
         };
@@ -95,9 +99,10 @@ public class AICodeGeneratorFacade {
      * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
      *
      * @param tokenStream TokenStream 对象
+     * @param appId 应用ID，用于打包
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
         // 这个process可以不用管保存了，因为AI已经使用保存工具保存过了，因此省去了一次chunk拼接，只需要在下游保存到数据库即可
         return Flux.create(sink -> {
             tokenStream.onPartialResponse((String partialResponse) -> {
@@ -114,6 +119,9 @@ public class AICodeGeneratorFacade {
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                     })
                     .onCompleteResponse((ChatResponse response) -> {
+                        // 同步打包VUE项目
+                        String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
+                        vueProjectBuilder.buildProjectAsync(projectPath);
                         sink.complete();
                     })
                     .onError((Throwable error) -> {

@@ -253,6 +253,36 @@ const startChat = async (messageText: string) => {
       scrollToBottom()
     })
 
+    // 处理business-error事件（后端限流等错误）
+    eventSource.addEventListener('business-error', function (event) {
+      if (streamCompleted) return
+
+      try {
+        const errorData = JSON.parse(event.data)
+        console.error('SSE业务错误事件:', errorData)
+
+        // 显示具体的错误信息
+        const errorMessage = errorData.message || '生成过程中出现错误'
+        aiMessage.value.content = `❌ ${errorMessage}`
+        aiMessage.value.isStreaming = false
+        message.error(errorMessage)
+
+        streamCompleted = true
+        generating.value = false
+        eventSource?.close()
+        scrollToBottom()
+      } catch (parseError) {
+        console.error('解析错误事件失败:', parseError, '原始数据:', event.data)
+        const errorMessage = '服务器返回错误'
+        message.error('对话失败：' + errorMessage)
+        aiMessage.value.content = '抱歉，发生了错误，请重试。'
+        aiMessage.value.isStreaming = false
+        generating.value = false
+        eventSource?.close()
+        scrollToBottom()
+      }
+    })
+
     // 错误处理
     eventSource.onerror = (error) => {
       // 检查是否是正常的连接关闭
