@@ -2,15 +2,17 @@ package com.nocode.backend.common;
 
 import com.nocode.backend.exception.ErrorCode;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
 /**
- * 通用相应类
+ * 通用响应类
  *
  * @param <T>
  */
 @Data
+@NoArgsConstructor
 public class BaseResponse<T> implements Serializable {
     private int code;
     private T data;
