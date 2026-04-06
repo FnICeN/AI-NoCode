@@ -3,6 +3,8 @@ package com.nocode.backend.ai;
 import cn.hutool.extra.spring.SpringUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.nocode.backend.ai.guardrail.PromptSafetyInputGuardrail;
+import com.nocode.backend.ai.guardrail.RetryOutputGuardrail;
 import com.nocode.backend.ai.tools.*;
 import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
@@ -103,6 +105,9 @@ public class AICodeGeneratorServiceFactory {
                         //  当调用的tool不存在时的处理策略
                         .hallucinatedToolNameStrategy(request ->
                                 ToolExecutionResultMessage.from(request, "没有工具：" + request.name()))
+                        .maxSequentialToolsInvocations(30)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入安全过滤器
+//                        .outputGuardrails(new RetryOutputGuardrail())  // 添加输出安全过滤器
                         .build();
 
             }
@@ -114,6 +119,8 @@ public class AICodeGeneratorServiceFactory {
                     .chatModel(chatModel)
                     .streamingChatModel(streamingChatModel)
                     .chatMemory(chatMemory)
+                    .inputGuardrails(new PromptSafetyInputGuardrail())
+//                    .outputGuardrails(new RetryOutputGuardrail())
                     .build();
             }
             default ->
