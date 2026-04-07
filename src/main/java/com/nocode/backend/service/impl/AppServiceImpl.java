@@ -24,6 +24,8 @@ import com.nocode.backend.model.entity.User;
 import com.nocode.backend.model.enums.CodeGenTypeEnum;
 import com.nocode.backend.model.vo.AppVO;
 import com.nocode.backend.model.vo.UserVO;
+import com.nocode.backend.monitor.MonitorContext;
+import com.nocode.backend.monitor.MonitorContextHolder;
 import com.nocode.backend.service.AppService;
 import com.nocode.backend.service.ChatHistoryService;
 import com.nocode.backend.service.ScreenshotService;
@@ -419,10 +421,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 保存User历史记录
         chatHistoryService.saveUserMessage(appId, loginUser.getId(), message);
+        // 设置监控上下文（以线程为key，上下文为value）
+        MonitorContext monitorContext = MonitorContext.builder()
+                .userId(loginUser.getId().toString())
+                .appId(appId.toString())
+                .build();
+        MonitorContextHolder.setContext(monitorContext);
         // 获取AI回复流
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 根据不同的业务类型进行不同的流处理（保存对话记录）
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
+                .doFinally(signalType -> {
+                    // 流结束时清理上下文
+                    MonitorContextHolder.clearContext();
+                });
     }
 
     @Override

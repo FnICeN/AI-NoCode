@@ -1,12 +1,16 @@
 package com.nocode.backend.config;
 
+import com.nocode.backend.monitor.AIModelMonitorListener;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import jakarta.annotation.Resource;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
+
+import java.util.List;
 
 /**
  * 流式模型配置
@@ -15,6 +19,9 @@ import org.springframework.context.annotation.Scope;
 @ConfigurationProperties(prefix = "langchain4j.open-ai.streaming-chat-model")
 @Data
 public class StreamingChatModelConfig {
+
+    @Resource
+    private AIModelMonitorListener aiModelMonitorListener;
 
     private String baseUrl;
     private String apiKey;
@@ -36,6 +43,7 @@ public class StreamingChatModelConfig {
                 .maxTokens(maxTokens)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 }
