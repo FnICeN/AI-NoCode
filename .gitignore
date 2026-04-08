@@ -1,4 +1,5 @@
 src/main/resources/application-local.yml
+NoCode-microservice/NoCode-app/src/main/resources/application-local.yml
 NoCode-microservice/NoCode-user/src/main/resources/application-local.yml
 /.trae
 tmp
