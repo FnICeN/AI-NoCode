@@ -1,0 +1,116 @@
+spring:
+  application:
+    name: nocode-backend
+  # session 配置
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/db
+    username: name
+    password: pwd
+  # redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      ttl: 3600
+  profiles:
+    active: local
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    # cookie 30 天过期
+    session:
+      cookie:
+        max-age: 2592000
+
+
+# springdoc-openapi项目配置
+springdoc:
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.nocode.backend.controller
+# knife4j的增强配置，不需要增强可以不配
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# AI
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com
+      api-key: <Your API Key>
+      model-name: deepseek-chat
+      log-requests: true
+      log-responses: true
+      max-tokens: 8192
+#      strict-json-schema: true
+#      response-format: json_object
+    streaming-chat-model:
+      base-url: https://api.deepseek.com
+      api-key: <Your API Key>
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
+      # 推理 AI 模型配置（用于复杂的推理任务）
+      reasoning-streaming-chat-model:
+        base-url: https://api.deepseek.com
+        api-key: <Your API Key>
+        model-name: deepseek-reasoner
+        max-tokens: 32768
+        temperature: 0.1
+        log-requests: true
+        log-responses: true
+      # 智能路由 AI 模型配置（用于简单的分类任务）
+      routing-chat-model:
+        base-url: https://api.deepseek.com
+        api-key: <Your API Key>
+        model-name: deepseek-chat
+        log-requests: true
+        log-responses: true
+
+
+# Log
+logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
+
+# 添加 COS 对象存储配置（需要从腾讯云获取）
+cos:
+  client:
+    host: your-custom-domain.com
+    secretId: your-secret-id
+    secretKey: your-secret-key
+    region: ap-shanghai
+    bucket: your-bucket-name
+
+# Pexels 图片搜索配置
+pexels:
+  api-key: <Your API Key>
+
+# 阿里云 DashScope 配置
+dashscope:
+  api-key: <Your API Key>
+  image-model: wan2.2-t2i-flash
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
