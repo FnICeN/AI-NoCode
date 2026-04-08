@@ -1,4 +1,4 @@
-package com.nocode.backend.service;
+package com.nocode.backend.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
@@ -6,6 +6,7 @@ import com.nocode.backend.exception.BusinessException;
 import com.nocode.backend.exception.ErrorCode;
 import com.nocode.backend.exception.ThrowUtils;
 import com.nocode.backend.manager.CosManager;
+import com.nocode.backend.service.ScreenshotService;
 import com.nocode.backend.utils.WebScreenshotUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

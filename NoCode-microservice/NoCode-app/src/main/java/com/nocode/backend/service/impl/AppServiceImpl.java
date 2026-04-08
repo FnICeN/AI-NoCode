@@ -30,7 +30,7 @@ import com.nocode.backend.service.AppService;
 import com.nocode.backend.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -52,8 +52,7 @@ import java.util.stream.Collectors;
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
-    @Resource
-    @Lazy
+    @DubboReference
     private InnerUserService userService;
     @Resource
     private ChatHistoryService chatHistoryService;
@@ -63,8 +62,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private StreamHandlerExecutor streamHandlerExecutor;
     @Resource
     private VueProjectBuilder vueProjectBuilder;
-    @Resource
-    @Lazy
+    @DubboReference
     private InnerScreenshotService screenshotService;
 
     // 由于必须要每次获得一个独立的Service，所以注入的是Factory，用Factory配合getBean（多例）生产独立的Service

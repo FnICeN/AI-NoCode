@@ -16,7 +16,6 @@ import com.nocode.backend.model.entity.User;
 import com.nocode.backend.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -32,9 +31,6 @@ public class ChatHistoryController {
 
     @Resource
     private ChatHistoryService chatHistoryService;
-    @Resource
-    @Lazy
-    private InnerUserService userService;
 
     // ==================== 用户接口 ====================
 

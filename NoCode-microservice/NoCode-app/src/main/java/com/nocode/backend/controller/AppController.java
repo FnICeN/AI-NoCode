@@ -25,7 +25,6 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -46,9 +45,6 @@ public class AppController {
 
     @Resource
     private AppService appService;
-    @Resource
-    @Lazy
-    private InnerUserService userService;
     @Resource
     private ProjectDownloadService projectDownloadService;
 
@@ -225,7 +221,7 @@ public class AppController {
     @Cacheable(
             value = "good_app_page",
             key = "T(com.nocode.backend.utils.CacheKeyUtil).generateKey(#appQueryRequest)",
-            condition = "#appQueryRequest.pageNum <= 10"
+            unless = "#appQueryRequest.pageNum <= 10"
     )
     public BaseResponse<Page<AppVO>> listFeaturedApps(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
